@@ -2,57 +2,57 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos que no pasan de moda
+## Fundamentals that never go out of style
 
-- Diseño de casos de prueba, técnicas de caja negra/blanca, partición de equivalencia, valores límite
-- Estrategia de testing (pirámide de pruebas, riesgo, priorización)
-- SDLC/STLC, metodologías ágiles (Scrum, Kanban) y su impacto en QA
+- Test case design, black-box/white-box techniques, equivalence partitioning, boundary values
+- Testing strategy (test pyramid, risk, prioritization)
+- SDLC/STLC, agile methodologies (Scrum, Kanban) and their impact on QA
 
-## Automatización
+## Automation
 
-- Un lenguaje sólido: Python, JavaScript/TypeScript o Java
-- Frameworks web: Playwright (dominante hoy) y Cypress; Selenium sigue vivo en legacy
-- API testing: Postman, REST Assured, o scripts propios con requests/httpx
-- Mobile: Appium, o frameworks nativos (Espresso, XCUITest)
-- BDD: Cucumber/Gherkin cuando el equipo lo requiera
+- One solid language: Python, JavaScript/TypeScript, or Java
+- Web frameworks: Playwright (dominant today) and Cypress; Selenium still alive in legacy
+- API testing: Postman, REST Assured, or custom scripts with requests/httpx
+- Mobile: Appium, or native frameworks (Espresso, XCUITest)
+- BDD: Cucumber/Gherkin when the team requires it
 
-## CI/CD y DevOps
+## CI/CD and DevOps
 
-- Integrar suites en GitHub Actions, GitLab CI, Jenkins
-- Docker básico para entornos reproducibles
-- Gestión de datos de prueba y entornos efímeros
+- Integrating suites into GitHub Actions, GitLab CI, Jenkins
+- Basic Docker for reproducible environments
+- Test data management and ephemeral environments
 
-## Performance y carga
+## Performance and load
 
 - k6, JMeter, Gatling
-- Entender métricas: latencia, throughput, percentiles (p95/p99)
+- Understanding metrics: latency, throughput, percentiles (p95/p99)
 
-## Testing basado en IA (relevante en 2026)
+## AI-based testing (relevant in 2026)
 
-- Herramientas de generación/mantenimiento de tests asistido por LLMs (self-healing tests)
-- Evaluar cuándo un test "flaky" es del entorno vs. del producto
-- Testing de features con IA integrada: prompts no deterministas, evaluación de calidad de respuestas de modelos, testing de agentes
+- LLM-assisted test generation/maintenance tools (self-healing tests)
+- Judging when a flaky test is the environment vs the product
+- Testing AI-integrated features: non-deterministic prompts, model response quality evaluation, agent testing
 
-## Seguridad básica
+## Basic security
 
-- OWASP Top 10, testing de autenticación/autorización
-- Herramientas como Burp Suite (nivel básico) para pentesting exploratorio
+- OWASP Top 10, authentication/authorization testing
+- Tools like Burp Suite (basic level) for exploratory pentesting
 
-## Bases de datos y backend
+## Databases and backend
 
-- SQL para validar datos
-- Entender arquitecturas de microservicios, colas de mensajes, contratos de API (OpenAPI/Swagger)
+- SQL to validate data
+- Understanding microservice architectures, message queues, API contracts (OpenAPI/Swagger)
 
-## Observabilidad
+## Observability
 
-- Leer logs, trazas (Datadog, Grafana, ELK) para debugging de fallos en producción o CI
+- Reading logs and traces (Datadog, Grafana, ELK) to debug failures in production or CI
 
-## Soft skills técnicas
+## Technical soft skills
 
-- Reporting claro de bugs (reproducibilidad, severidad, impacto)
-- Comunicación con devs y PMs; entender el "por qué" del negocio detrás de cada feature
-- Pensamiento crítico para diseñar casos que un desarrollador no contempló
+- Clear bug reporting (reproducibility, severity, impact)
+- Communicating with devs and PMs; understanding the business "why" behind each feature
+- Critical thinking to design cases a developer did not consider
 
-## Accesibilidad
+## Accessibility
 
-- WCAG básico, herramientas como axe-core
+- Basic WCAG, tools like axe-core

@@ -2,62 +2,62 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos del lenguaje (dominio profundo, no superficial)
+## Language fundamentals (deep, not superficial)
 
-- Modelo de objetos, __slots__, descriptores, metaclasses, protocolo de iteradores/generadores
-- asyncio a fondo: event loop, tareas, asyncio.TaskGroup, structured concurrency, cancelación correcta
-- Type hints avanzados: Generic, Protocol, TypeVar con bounds, ParamSpec, TypedDict, overload
-- GIL y su eliminación progresiva (PEP 703, "free-threaded" builds desde 3.13), implicaciones reales en concurrencia
-- Memory model: referencia vs copia, gc, weak references, profiling de memoria (tracemalloc, memray)
+- Object model, __slots__, descriptors, metaclasses, iterator/generator protocol
+- asyncio in depth: event loop, tasks, asyncio.TaskGroup, structured concurrency, correct cancellation
+- Advanced type hints: Generic, Protocol, TypeVar with bounds, ParamSpec, TypedDict, overload
+- The GIL and its progressive removal (PEP 703, "free-threaded" builds since 3.13), real implications for concurrency
+- Memory model: reference vs copy, gc, weak references, memory profiling (tracemalloc, memray)
 
-## Performance y concurrencia
+## Performance and concurrency
 
-- Cuándo usar threading vs multiprocessing vs asyncio vs subinterpreters (PEP 734)
-- Extensiones nativas: Cython, ctypes, cffi, PyO3/Rust bindings, saber cuándo bajar a Rust/C
-- Profiling real: py-spy, austin, flame graphs, benchmarking con pyperf
-- JIT experimental de CPython (3.13+) y su impacto práctico
+- When to use threading vs multiprocessing vs asyncio vs subinterpreters (PEP 734)
+- Native extensions: Cython, ctypes, cffi, PyO3/Rust bindings, knowing when to drop to Rust/C
+- Real profiling: py-spy, austin, flame graphs, benchmarking with pyperf
+- CPython's experimental JIT (3.13+) and its practical impact
 
-## Arquitectura y diseño de sistemas
+## Architecture and system design
 
-- Diseño de APIs (REST, gRPC, GraphQL) y trade-offs
-- Patrones de arquitectura: hexagonal, CQRS, event-driven, microservicios vs monolito modular
-- Diseño de librerías/paquetes públicos: versionado semántico, deprecation policies, backward compatibility
-- Domain-Driven Design aplicado a Python (bounded contexts, agregados)
+- API design (REST, gRPC, GraphQL) and trade-offs
+- Architecture patterns: hexagonal, CQRS, event-driven, microservices vs modular monolith
+- Public library/package design: semantic versioning, deprecation policies, backward compatibility
+- Domain-Driven Design applied to Python (bounded contexts, aggregates)
 
-## Testing y calidad
+## Testing and quality
 
-- pytest avanzado: fixtures parametrizadas, plugins propios, hypothesis (property-based testing)
-- Mutation testing (mutmut), contract testing, testing de sistemas distribuidos
-- Observabilidad: OpenTelemetry, structured logging, tracing distribuido
+- Advanced pytest: parametrized fixtures, custom plugins, hypothesis (property-based testing)
+- Mutation testing (mutmut), contract testing, testing distributed systems
+- Observability: OpenTelemetry, structured logging, distributed tracing
 
-## Tooling moderno del ecosistema (2026)
+## Modern ecosystem tooling (2026)
 
-- uv como estándar de facto para gestión de paquetes/entornos (reemplazando pip/poetry en muchos equipos)
-- ruff como linter/formatter unificado (reemplaza flake8+black+isort)
-- mypy/pyright en modo estricto, integración en CI
-- Empaquetado moderno: pyproject.toml, PEP 621, build backends (hatchling, setuptools moderno)
+- uv as the de facto standard for package/environment management (replacing pip/poetry in many teams)
+- ruff as a unified linter/formatter (replaces flake8+black+isort)
+- mypy/pyright in strict mode, CI integration
+- Modern packaging: pyproject.toml, PEP 621, build backends (hatchling, modern setuptools)
 
-## Infraestructura y despliegue
+## Infrastructure and deployment
 
-- Contenedores optimizados (multi-stage builds, distroless, tamaño de imagen)
-- Kubernetes: operators, CRDs si aplica al dominio
-- CI/CD: GitHub Actions/GitLab CI, matrices de testing, caching de dependencias
-- IaC: Terraform/Pulumi si el rol lo requiere
+- Optimized containers (multi-stage builds, distroless, image size)
+- Kubernetes: operators, CRDs if the domain requires it
+- CI/CD: GitHub Actions/GitLab CI, test matrices, dependency caching
+- IaC: Terraform/Pulumi if the role requires it
 
-## Datos y ML (relevante en 2026 casi siempre)
+## Data and ML (relevant in 2026 almost always)
 
-- Integración con LLMs: function calling, agentes, RAG, embeddings, a nivel de arquitectura de sistema, no solo prompting
-- polars como alternativa madura a pandas para datasets grandes
-- Pipelines de datos: Airflow/Dagster, streaming (Kafka + Python consumers)
+- LLM integration: function calling, agents, RAG, embeddings, at the system architecture level, not just prompting
+- polars as a mature alternative to pandas for large datasets
+- Data pipelines: Airflow/Dagster, streaming (Kafka + Python consumers)
 
-## Seguridad
+## Security
 
-- OWASP aplicado a Python (deserialización insegura, SSRF, secrets management)
-- Supply chain security: SBOM, firma de paquetes, auditoría de dependencias (pip-audit)
+- OWASP applied to Python (insecure deserialization, SSRF, secrets management)
+- Supply chain security: SBOM, package signing, dependency auditing (pip-audit)
 
-## Habilidades de nivel senior (no técnicas puras)
+## Senior-level skills (not purely technical)
 
-- Diseño de RFCs/ADRs, liderazgo técnico transversal
-- Mentoría y code review de alto nivel (no solo estilo, sino arquitectura)
-- Capacidad de evaluar trade-offs de negocio vs técnicos, y comunicarlos a stakeholders no técnicos
-- Definición de estándares de ingeniería para el equipo/org
+- Designing RFCs/ADRs, cross-cutting technical leadership
+- High-level mentoring and code review (not just style, but architecture)
+- Ability to weigh business vs technical trade-offs and communicate them to non-technical stakeholders
+- Defining engineering standards for the team/org

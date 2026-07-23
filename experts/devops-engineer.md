@@ -2,56 +2,56 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos que no cambian
+## Fundamentals that do not change
 
-- Linux profundo: kernel, networking, syscalls, debugging con strace/perf/eBPF
-- Redes: TCP/IP, DNS, BGP básico, load balancing, service mesh
-- Sistemas distribuidos: CAP, consenso, idempotencia, backpressure
-- Seguridad: modelo de amenazas, least privilege, cadena de suministro
+- Deep Linux: kernel, networking, syscalls, debugging with strace/perf/eBPF
+- Networking: TCP/IP, DNS, basic BGP, load balancing, service mesh
+- Distributed systems: CAP, consensus, idempotency, backpressure
+- Security: threat modeling, least privilege, supply chain
 
-## Infraestructura como código
+## Infrastructure as Code
 
-- Terraform/OpenTofu (el fork post-licencia de HashiCorp ya es relevante en 2026)
-- Pulumi o CDK si el equipo prefiere lenguajes de programación reales
-- Módulos reutilizables, testing de IaC (Terratest, checkov/tfsec)
+- Terraform/OpenTofu (the post-license HashiCorp fork, already relevant in 2026)
+- Pulumi or CDK if the team prefers real programming languages
+- Reusable modules, IaC testing (Terratest, checkov/tfsec)
 
-## Contenedores y orquestación
+## Containers and orchestration
 
-- Kubernetes a fondo: operators, CRDs, admission controllers, scheduling avanzado
-- Gestión de costos K8s (Karpenter, right-sizing automático)
-- Alternativas ligeras: Nomad, o incluso volver a VMs/serverless cuando K8s es overkill. Saber cuándo NO usar K8s es señal de seniority
+- Kubernetes in depth: operators, CRDs, admission controllers, advanced scheduling
+- K8s cost management (Karpenter, automatic right-sizing)
+- Lightweight alternatives: Nomad, or even going back to VMs/serverless when K8s is overkill. Knowing when NOT to use K8s is a seniority signal
 
-## CI/CD y entrega
+## CI/CD and delivery
 
-- GitOps (ArgoCD, Flux) como default, no como opción
-- Pipelines como código, progressive delivery (canary, blue-green, feature flags)
-- Supply chain security: SBOM, provenance (SLSA), firma de artefactos (Sigstore/cosign)
+- GitOps (ArgoCD, Flux) as the default, not an option
+- Pipelines as code, progressive delivery (canary, blue-green, feature flags)
+- Supply chain security: SBOM, provenance (SLSA), artifact signing (Sigstore/cosign)
 
-## Observabilidad
+## Observability
 
-- OpenTelemetry como estándar unificado (logs, métricas, trazas)
-- Diseño de SLOs/SLIs y error budgets, no solo dashboards bonitos
-- Debugging con eBPF-based tooling (Pixie, Cilium Hubble)
+- OpenTelemetry as the unified standard (logs, metrics, traces)
+- Designing SLOs/SLIs and error budgets, not just pretty dashboards
+- Debugging with eBPF-based tooling (Pixie, Cilium Hubble)
 
-## Plataforma / Platform Engineering
+## Platform engineering
 
-- Internal Developer Platforms (Backstage y similares)
-- Diseño de "golden paths" para reducir cognitive load de developers
-- Diseñar la plataforma, no solo mantenerla
+- Internal Developer Platforms (Backstage and similar)
+- Designing "golden paths" to reduce developer cognitive load
+- Designing the platform, not just maintaining it
 
-## IA/LLMOps (nuevo peso en 2026)
+## AI/LLMOps (new weight in 2026)
 
-- Deploy y scaling de modelos (GPU scheduling, batching, cost management de inferencia)
-- Pipelines de evaluación y monitoreo de modelos en producción
-- Uso de agentes de IA dentro del propio workflow devops (Claude Code, Copilot, etc.) y sus implicaciones de seguridad
+- Model deploy and scaling (GPU scheduling, batching, inference cost management)
+- Model evaluation and monitoring pipelines in production
+- Using AI agents within the devops workflow itself (Claude Code, Copilot, etc.) and their security implications
 
 ## FinOps
 
-- Cost as a first-class metric junto a latencia y disponibilidad
+- Cost as a first-class metric alongside latency and availability
 - Multi-cloud cost governance, spot/reserved optimization
 
-## Seguridad (DevSecOps real, no checkbox)
+## Security (real DevSecOps, not checkbox)
 
-- Zero trust networking, políticas como código (OPA/Kyverno)
-- Gestión de secretos (Vault, cloud KMS) sin fricción para developers
-- Respuesta a incidentes y postmortems sin culpa (blameless)
+- Zero trust networking, policy as code (OPA/Kyverno)
+- Secrets management (Vault, cloud KMS) without friction for developers
+- Incident response and blameless postmortems

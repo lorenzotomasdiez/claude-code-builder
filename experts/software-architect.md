@@ -4,44 +4,44 @@ Source knowledge to distill into workflow subagents. Not an agent itself.
 
 Follow the practices in "Fundamentals of Software Architecture" and always create the documents the book recommends (ADRs, architecture characteristics, component diagrams) so later agents can consume them.
 
-## Fundamentos que no caducan
+## Fundamentals that do not expire
 
-- Patrones arquitectónicos: microservicios, monolito modular, event-driven, hexagonal/clean architecture, CQRS, saga pattern
-- Trade-offs de consistencia distribuida (CAP, teorema de consenso, patrones de resiliencia: circuit breaker, bulkhead, retry con backoff)
-- Domain-Driven Design (bounded contexts, agregados, ubiquitous language)
-- Diseño de APIs (REST, GraphQL, gRPC) y versionado
-- Principios SOLID, acoplamiento/cohesión, gestión de deuda técnica
+- Architectural patterns: microservices, modular monolith, event-driven, hexagonal/clean architecture, CQRS, saga pattern
+- Distributed consistency trade-offs (CAP, consensus theorem, resilience patterns: circuit breaker, bulkhead, retry with backoff)
+- Domain-Driven Design (bounded contexts, aggregates, ubiquitous language)
+- API design (REST, GraphQL, gRPC) and versioning
+- SOLID principles, coupling/cohesion, technical debt management
 
-## IA y sistemas con LLMs (crítico en 2026)
+## AI and LLM systems (critical in 2026)
 
-- Arquitecturas RAG y sus variantes (agentic RAG, GraphRAG)
-- Diseño de sistemas multi-agente y orquestación (frameworks como LangGraph, CrewAI, o el protocolo MCP de Anthropic)
-- Patrones para evaluar y monitorizar modelos en producción (evals, observabilidad de LLMs, guardrails)
-- Costos y latencia de inferencia; cuándo usar modelo pequeño vs grande vs fine-tuning vs prompting
-- Seguridad específica de IA: prompt injection, exfiltración de datos vía agentes, sandboxing de herramientas
+- RAG architectures and their variants (agentic RAG, GraphRAG)
+- Multi-agent system design and orchestration (frameworks like LangGraph, CrewAI, or Anthropic's MCP protocol)
+- Patterns for evaluating and monitoring models in production (evals, LLM observability, guardrails)
+- Inference cost and latency; when to use a small vs large model vs fine-tuning vs prompting
+- AI-specific security: prompt injection, data exfiltration via agents, tool sandboxing
 
-## Infraestructura y plataforma
+## Infrastructure and platform
 
-- Kubernetes y su ecosistema (service mesh, GitOps con ArgoCD/Flux)
-- Arquitecturas serverless y edge computing
-- Observabilidad moderna: OpenTelemetry, tracing distribuido, SLOs/SLIs
-- FinOps: gestión de costos cloud como responsabilidad arquitectónica, no solo de finanzas
-- Plataformas internas (platform engineering, "golden paths")
+- Kubernetes and its ecosystem (service mesh, GitOps with ArgoCD/Flux)
+- Serverless and edge computing architectures
+- Modern observability: OpenTelemetry, distributed tracing, SLOs/SLIs
+- FinOps: cloud cost management as an architectural responsibility, not just finance's
+- Internal platforms (platform engineering, "golden paths")
 
-## Datos
+## Data
 
-- Arquitecturas de datos modernas: data mesh, lakehouse, streaming (Kafka, Flink)
-- Vector databases y su rol en sistemas de búsqueda semántica
-- Gobernanza de datos y linaje, especialmente relevante con regulación de IA
+- Modern data architectures: data mesh, lakehouse, streaming (Kafka, Flink)
+- Vector databases and their role in semantic search systems
+- Data governance and lineage, especially relevant under AI regulation
 
-## Seguridad y cumplimiento
+## Security and compliance
 
 - Zero trust architecture
-- Supply chain security (SBOM, firma de artefactos, dependencias)
-- Regulación de IA (EU AI Act, marcos de gobernanza emergentes) y su impacto en diseño de sistemas
+- Supply chain security (SBOM, artifact signing, dependencies)
+- AI regulation (EU AI Act, emerging governance frameworks) and its impact on system design
 
-## Habilidades "soft" que son técnicas en la práctica
+## "Soft" skills that are technical in practice
 
-- Documentación de decisiones (ADRs) y comunicación con stakeholders no técnicos
-- Evaluación de build vs buy vs "orchestrate" (cuándo usar servicios gestionados de IA vs construir)
-- Gestión del cambio organizacional cuando se introduce IA en flujos de trabajo existentes
+- Documenting decisions (ADRs) and communicating with non-technical stakeholders
+- Evaluating build vs buy vs "orchestrate" (when to use managed AI services vs build)
+- Organizational change management when introducing AI into existing workflows

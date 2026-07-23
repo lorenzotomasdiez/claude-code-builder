@@ -2,45 +2,45 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos y marcos de trabajo
+## Frameworks and ways of working
 
-- Scrum Guide (versión actual) y Kanban (Método Kanban de David Anderson)
-- Product-Led Growth y sus métricas asociadas
-- Frameworks de priorización más allá de RICE/MoSCoW: Opportunity Solution Trees (Teresa Torres), Now-Next-Later
+- Scrum Guide (current version) and Kanban (David Anderson's Kanban Method)
+- Product-Led Growth and its associated metrics
+- Prioritization frameworks beyond RICE/MoSCoW: Opportunity Solution Trees (Teresa Torres), Now-Next-Later
 
-## Descubrimiento de producto
+## Product discovery
 
 - "Continuous Discovery Habits" - Teresa Torres
-- "Inspired" y "Empowered" - Marty Cagan (SVPG)
+- "Inspired" and "Empowered" - Marty Cagan (SVPG)
 - Jobs to Be Done (JTBD) - Bob Moesta / Tony Ulwick
 
-## IA aplicada al producto (crítico en 2026)
+## AI applied to product (critical in 2026)
 
-- Diseño de producto con IA generativa integrada (no solo IA como feature, sino como núcleo de la propuesta de valor)
-- Evaluación de modelos y "evals" como parte del ciclo de producto
-- Ética y gobernanza de IA en producto: sesgo, transparencia, consentimiento de datos
-- Prompt engineering básico para poder prototipar sin depender 100% de ingeniería
+- Product design with generative AI at the core, not just AI as a bolt-on feature but as the core of the value proposition
+- Model evaluation and evals as part of the product cycle
+- AI ethics and governance in product: bias, transparency, data consent
+- Basic prompt engineering to prototype without depending 100% on engineering
 
-## Métricas y datos
+## Metrics and data
 
-- North Star Metric y árboles de métricas (HEART, AARRR/Pirate Metrics)
-- Experimentación: A/B testing, significancia estadística básica
-- Analítica de producto: cohortes, retención, análisis de funnel
+- North Star Metric and metric trees (HEART, AARRR/Pirate Metrics)
+- Experimentation: A/B testing, basic statistical significance
+- Product analytics: cohorts, retention, funnel analysis
 
-## Estrategia
+## Strategy
 
 - "Good Strategy Bad Strategy" - Richard Rumelt
-- Modelos de negocio y unit economics (LTV, CAC, payback period)
-- Posicionamiento competitivo en mercados saturados por IA
+- Business models and unit economics (LTV, CAC, payback period)
+- Competitive positioning in AI-saturated markets
 
-## Habilidades blandas y de liderazgo
+## Soft skills and leadership
 
-- Comunicación con stakeholders y gestión de expectativas
-- Negociación de alcance ("Radical Candor" - Kim Scott)
-- Facilitación de talleres de discovery
+- Stakeholder communication and expectation management
+- Scope negotiation ("Radical Candor" - Kim Scott)
+- Facilitation of discovery workshops
 
-## Técnico (sin ser ingeniero)
+## Technical (without being an engineer)
 
-- Arquitectura básica de sistemas y APIs
-- Conceptos de LLMs, RAG, fine-tuning (a nivel conceptual, no implementación)
-- Seguridad y privacidad de datos (GDPR, regulaciones de IA como el AI Act europeo)
+- Basic systems and API architecture
+- LLM, RAG, fine-tuning concepts (conceptual level, not implementation)
+- Data security and privacy (GDPR, AI regulation such as the EU AI Act)

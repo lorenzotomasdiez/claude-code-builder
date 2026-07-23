@@ -2,43 +2,43 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Estrategia y negocio
+## Strategy and business
 
-- Modelado de unit economics (CAC, LTV, payback period) y cómo se conectan con decisiones de canal
-- Diseño de go-to-market para producto nuevo vs. expansión de mercado existente
-- Pricing strategy y su impacto en posicionamiento
-- Lectura de P&L de marketing y defensa de presupuesto ante finanzas/CEO
+- Unit economics modeling (CAC, LTV, payback period) and how they connect to channel decisions
+- Designing go-to-market for a new product vs expansion into an existing market
+- Pricing strategy and its impact on positioning
+- Reading a marketing P&L and defending budget to finance/CEO
 
-## Datos y medición
+## Data and measurement
 
-- Marketing Mix Modeling (MMM) y su resurgimiento frente a la caída del last-click atribuido a privacidad
-- Incrementality testing (geo-holdouts, experimentos causales), cada vez más crítico por la pérdida de señal de tracking
+- Marketing Mix Modeling (MMM) and its resurgence as last-click attribution declines under privacy changes
+- Incrementality testing (geo-holdouts, causal experiments), increasingly critical as tracking signal is lost
 - Server-side tracking, first-party data strategy, clean rooms
-- Diseño de dashboards que conecten métricas de marketing con revenue real, no solo vanity metrics
+- Designing dashboards that connect marketing metrics to real revenue, not just vanity metrics
 
-## IA aplicada a marketing
+## AI applied to marketing
 
-- Uso de LLMs para generación de contenido a escala, pero con criterio editorial humano encima (la diferenciación ya no viene de "usar IA" sino de cómo se supervisa)
-- Agentes de IA para automatización de campañas (optimización de bidding, personalización dinámica)
-- Search generativo (AI Overviews, respuestas de asistentes tipo Claude/ChatGPT) y cómo cambia el SEO tradicional hacia "answer engine optimization"
-- Criterio para saber qué NO automatizar (marca, tono, decisiones creativas de alto riesgo)
+- Using LLMs for content generation at scale, but with human editorial judgment on top (differentiation now comes from how it is supervised, not from "using AI")
+- AI agents for campaign automation (bid optimization, dynamic personalization)
+- Generative search (AI Overviews, answers from assistants like Claude/ChatGPT) and how it shifts traditional SEO toward "answer engine optimization"
+- Judgment about what NOT to automate (brand, tone, high-risk creative decisions)
 
-## Canales y medios
+## Channels and media
 
-- Retail media networks (Amazon, Walmart Connect, etc.) como tercer gran bloque de medios junto a Google/Meta
-- Creator economy y partnerships a largo plazo vs. campañas puntuales de influencers
-- Privacidad post-cookies: contextual targeting, data clean rooms, consent management
-- Connected TV / streaming ads y su medición
+- Retail media networks (Amazon, Walmart Connect, etc.) as a third major media block alongside Google/Meta
+- Creator economy and long-term partnerships vs one-off influencer campaigns
+- Post-cookie privacy: contextual targeting, data clean rooms, consent management
+- Connected TV / streaming ads and their measurement
 
-## Marca y creatividad
+## Brand and creative
 
-- Brand building de largo plazo vs. performance de corto plazo (defendido con datos tipo Binet & Field)
-- Diseño de sistemas de marca consistentes multi-plataforma, incluyendo cómo se ve la marca dentro de resultados de IA generativa
-- Storytelling y diferenciación en un entorno saturado de contenido generado por IA
+- Long-term brand building vs short-term performance (defended with Binet & Field-style data)
+- Designing consistent multi-platform brand systems, including how the brand appears inside generative AI results
+- Storytelling and differentiation in an environment saturated with AI-generated content
 
-## Liderazgo (nivel senior)
+## Leadership (senior level)
 
-- Gestión de equipos multidisciplinarios (growth, brand, producto, data)
-- Comunicación ejecutiva: traducir estrategia de marketing a lenguaje de negocio para board/C-level
-- Vendor management y evaluación de stack de martech (consolidación vs. punto de solución)
-- Mentoría y desarrollo de talento senior
+- Managing multidisciplinary teams (growth, brand, product, data)
+- Executive communication: translating marketing strategy into business language for board/C-level
+- Vendor management and martech stack evaluation (consolidation vs point solution)
+- Mentoring and developing senior talent

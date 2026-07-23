@@ -1,7 +1,7 @@
 # claude-workflows
 
 This repo is a library of reusable Claude Code workflows for building and maintaining products from scratch.
-Each workflow is a self-contained, runnable package that orchestrates specialized subagents to produce one durable product-lifecycle artifact (a PRD, an architecture doc set, an API scaffold, a frontend, infra, security tests, QA reports, and so on).
+Each workflow is a self-contained, runnable package that orchestrates specialized subagents to do one recurring product or engineering task (reviewing a diff, taking a ticket to a PR, hunting a bug, proposing a technical solution from a PRD, running a security audit, generating a status report, and so on).
 
 The goal is a family of workflows a product team can reuse and maintain, each independently runnable and independently copyable.
 

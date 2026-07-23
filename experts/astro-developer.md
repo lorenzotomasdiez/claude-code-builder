@@ -2,52 +2,52 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Core de Astro
+## Astro core
 
-- Islands architecture y estrategias de hidratación (client:load, client:idle, client:visible, client:only)
-- Content Collections (schema con Zod, getCollection, render())
-- Astro Actions (para mutaciones type-safe sin API routes manuales)
-- View Transitions API integrada y astro:transitions
-- Server Islands (renderizado híbrido por componente)
-- Middleware y astro:middleware
-- SSR vs SSG vs híbrido, y cuándo usar cada adapter (Node, Vercel, Cloudflare, Netlify, Deno)
-- Astro DB / Astro Studio (o su evolución) para persistencia integrada
+- Islands architecture and hydration strategies (client:load, client:idle, client:visible, client:only)
+- Content Collections (schema with Zod, getCollection, render())
+- Astro Actions (for type-safe mutations without manual API routes)
+- Integrated View Transitions API and astro:transitions
+- Server Islands (per-component hybrid rendering)
+- Middleware and astro:middleware
+- SSR vs SSG vs hybrid, and when to use each adapter (Node, Vercel, Cloudflare, Netlify, Deno)
+- Astro DB / Astro Studio (or its evolution) for integrated persistence
 
-## Integraciones de UI
+## UI integrations
 
-- Dominar al menos 2-3 frameworks de islas (React, Vue, Svelte, Solid, Preact) y saber elegir según el caso
-- Patrones para minimizar JS enviado al cliente (islas quirúrgicas vs componentes estáticos)
+- Master at least 2-3 island frameworks (React, Vue, Svelte, Solid, Preact) and know how to choose per case
+- Patterns to minimize JS shipped to the client (surgical islands vs static components)
 
-## Rendimiento
+## Performance
 
-- Core Web Vitals aplicados específicamente a Astro (LCP, CLS con imágenes, INP con hidratación)
-- astro:assets y optimización de imágenes (Sharp, formatos modernos AVIF/WebP)
-- Prefetching (data-astro-prefetch) y estrategias de cache por adapter
-- Bundle analysis y tree-shaking de integraciones
+- Core Web Vitals applied specifically to Astro (LCP, CLS with images, INP with hydration)
+- astro:assets and image optimization (Sharp, modern AVIF/WebP formats)
+- Prefetching (data-astro-prefetch) and per-adapter cache strategies
+- Bundle analysis and tree-shaking of integrations
 
-## Arquitectura y patrones
+## Architecture and patterns
 
-- Diseño de content-driven sites (blogs, docs, marketing) vs apps con estado complejo
-- Cuándo NO usar Astro (apps altamente interactivas tipo SPA)
-- Composición de layouts, slots, y patrones de componentes reutilizables
-- Monorepos con Astro + otros paquetes (Turborepo/Nx)
+- Designing content-driven sites (blogs, docs, marketing) vs apps with complex state
+- When NOT to use Astro (highly interactive SPA-style apps)
+- Composition of layouts, slots, and reusable component patterns
+- Monorepos with Astro + other packages (Turborepo/Nx)
 
-## Ecosistema y tooling
+## Ecosystem and tooling
 
-- Astro DevToolbar y sus apps de debugging
-- Integraciones populares: Tailwind, MDX, Sitemap, i18n, Partytown
-- CMS headless (Sanity, Contentful, Storyblok, Payload) integrados vía Content Layer API
-- Testing: Vitest para lógica, Playwright para E2E en páginas renderizadas
+- Astro DevToolbar and its debugging apps
+- Popular integrations: Tailwind, MDX, Sitemap, i18n, Partytown
+- Headless CMS (Sanity, Contentful, Storyblok, Payload) integrated via the Content Layer API
+- Testing: Vitest for logic, Playwright for E2E on rendered pages
 
-## DevOps y despliegue
+## DevOps and deployment
 
-- Configuración fina de adapters según proveedor (edge vs serverless vs node)
-- CI/CD con builds incrementales
-- Manejo de env vars públicas vs privadas (import.meta.env)
+- Fine adapter configuration per provider (edge vs serverless vs node)
+- CI/CD with incremental builds
+- Handling public vs private env vars (import.meta.env)
 
-## Buenas prácticas avanzadas
+## Advanced best practices
 
-- Accesibilidad (a11y) integrada desde el diseño, no como parche
-- SEO técnico: meta tags dinámicos, structured data, sitemap automático
-- Seguridad en Actions y middleware (validación, rate limiting, CSRF)
-- Migración desde otros frameworks (Next.js, Gatsby, Jekyll) a Astro
+- Accessibility (a11y) built in from design, not patched on
+- Technical SEO: dynamic meta tags, structured data, automatic sitemap
+- Security in Actions and middleware (validation, rate limiting, CSRF)
+- Migration from other frameworks (Next.js, Gatsby, Jekyll) to Astro

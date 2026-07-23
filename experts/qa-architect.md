@@ -2,51 +2,51 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos de estrategia de testing
+## Testing strategy fundamentals
 
-- Test pyramid vs testing trophy, y cuándo aplicar cada modelo
-- Risk-based testing y priorización basada en impacto de negocio
-- Shift-left y shift-right testing (testing continuo en todo el SDLC)
-- Diseño de estrategias de testing multi-equipo/multi-servicio
+- Test pyramid vs testing trophy, and when to apply each model
+- Risk-based testing and prioritization by business impact
+- Shift-left and shift-right testing (continuous testing across the SDLC)
+- Designing multi-team/multi-service testing strategies
 
-## Automatización y frameworks
+## Automation and frameworks
 
-- Playwright (ha desplazado bastante a Selenium/Cypress en muchos stacks)
-- Contract testing (Pact, Spring Cloud Contract) para arquitecturas distribuidas
-- API testing avanzado (REST, GraphQL, gRPC) - Postman/Newman, RestAssured
-- Frameworks BDD (Cucumber, SpecFlow) y su rol real vs sobreuso
-- Diseño de frameworks de automatización mantenibles (Page Object, Screenplay pattern)
+- Playwright (has largely displaced Selenium/Cypress in many stacks)
+- Contract testing (Pact, Spring Cloud Contract) for distributed architectures
+- Advanced API testing (REST, GraphQL, gRPC) - Postman/Newman, RestAssured
+- BDD frameworks (Cucumber, SpecFlow) and their real role vs overuse
+- Designing maintainable automation frameworks (Page Object, Screenplay pattern)
 
-## Testing en arquitecturas modernas
+## Testing in modern architectures
 
-- Testing de microservicios: contract testing, service virtualization, chaos engineering
-- Testing en arquitecturas event-driven (Kafka, colas de mensajes)
-- Testing de sistemas basados en IA/LLM: evaluación de prompts, detección de alucinaciones, testing no-determinístico
-- Observabilidad como parte del testing (tracing, logs, métricas - OpenTelemetry)
+- Microservices testing: contract testing, service virtualization, chaos engineering
+- Testing in event-driven architectures (Kafka, message queues)
+- Testing AI/LLM-based systems: prompt evaluation, hallucination detection, non-deterministic testing
+- Observability as part of testing (tracing, logs, metrics - OpenTelemetry)
 
-## CI/CD y DevOps
+## CI/CD and DevOps
 
-- Integración de testing en pipelines (GitHub Actions, GitLab CI, Jenkins)
-- Test parallelization y optimización de tiempos de ejecución
-- Feature flags y testing en producción (canary, dark launches)
-- Infrastructure as Code aplicado a entornos de testing (Docker, Kubernetes, Terraform)
+- Integrating testing into pipelines (GitHub Actions, GitLab CI, Jenkins)
+- Test parallelization and execution-time optimization
+- Feature flags and testing in production (canary, dark launches)
+- Infrastructure as Code applied to test environments (Docker, Kubernetes, Terraform)
 
-## Calidad de datos y performance
+## Data quality and performance
 
-- Testing de performance (k6, Gatling, JMeter) y modelado de carga realista
-- Data quality testing en pipelines de datos/ML
-- Testing de seguridad básico (OWASP Top 10, SAST/DAST integrado en pipeline)
-- Accesibilidad (WCAG) como requisito no negociable, no opcional
+- Performance testing (k6, Gatling, JMeter) and realistic load modeling
+- Data quality testing in data/ML pipelines
+- Basic security testing (OWASP Top 10, SAST/DAST integrated in the pipeline)
+- Accessibility (WCAG) as a non-negotiable requirement, not optional
 
-## Liderazgo y arquitectura
+## Leadership and architecture
 
-- Definición de métricas de calidad significativas (no solo cobertura %, sino defect escape rate, MTTR, etc.)
-- Gestión de deuda técnica en test suites
-- Mentoría y establecimiento de estándares de calidad entre equipos
-- Comunicación de riesgo de calidad a stakeholders no técnicos
+- Defining meaningful quality metrics (not just coverage %, but defect escape rate, MTTR, etc.)
+- Managing technical debt in test suites
+- Mentoring and establishing quality standards across teams
+- Communicating quality risk to non-technical stakeholders
 
-## Tendencias emergentes 2026
+## Emerging trends 2026
 
-- Uso de IA generativa para generación de casos de prueba y mantenimiento de tests
-- Testing de agentes de IA autónomos (comportamiento multi-paso, uso de herramientas)
-- Self-healing tests y detección automática de flaky tests
+- Using generative AI to generate test cases and maintain tests
+- Testing autonomous AI agents (multi-step behavior, tool use)
+- Self-healing tests and automatic flaky-test detection

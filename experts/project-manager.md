@@ -2,43 +2,43 @@
 
 Source knowledge to distill into workflow subagents. Not an agent itself.
 
-## Fundamentos y marcos de trabajo
+## Frameworks and ways of working
 
-- PMBOK 7 (enfoque en principios, no solo procesos)
-- Guías ágiles: Scrum Guide (2020), SAFe, Kanban (David Anderson)
-- Gestión híbrida (mezcla de waterfall + ágil, cada vez más estándar)
-- Gestión de portafolios y programas (más allá de proyectos individuales)
+- PMBOK 7 (principles-focused, not just processes)
+- Agile guides: Scrum Guide (2020), SAFe, Kanban (David Anderson)
+- Hybrid management (mix of waterfall + agile, increasingly standard)
+- Portfolio and program management (beyond individual projects)
 
-## Libros clásicos que siguen vigentes
+## Classic books still relevant
 
 - The Mythical Man-Month - Fred Brooks
 - Team of Teams - Stanley McChrystal
-- The Phoenix Project / The Goal - narrativa aplicada a procesos
+- The Phoenix Project / The Goal - narrative applied to process
 - Thinking in Systems - Donella Meadows
-- Radical Candor - Kim Scott (feedback y liderazgo)
+- Radical Candor - Kim Scott (feedback and leadership)
 
-## Habilidades técnicas actuales (2026)
+## Current technical skills (2026)
 
-- Uso de IA en gestión de proyectos: automatización de reportes, predicción de riesgos, asistentes tipo Claude/Copilot integrados en herramientas (Jira, Asana, Monday)
-- Gestión de datos y métricas: OKRs, KPIs, dashboards en tiempo real
-- Nociones básicas de ciberseguridad y cumplimiento normativo (especialmente si el proyecto toca datos o IA)
-- Herramientas: Jira, Linear, Notion, Asana, Monday, Smartsheet, y cómo integrarlas con IA
+- Using AI in project management: report automation, risk prediction, assistants like Claude/Copilot integrated into tools (Jira, Asana, Monday)
+- Data and metrics management: OKRs, KPIs, real-time dashboards
+- Basic notions of cybersecurity and regulatory compliance (especially when the project touches data or AI)
+- Tools: Jira, Linear, Notion, Asana, Monday, Smartsheet, and how to integrate them with AI
 
-## Habilidades blandas críticas
+## Critical soft skills
 
-- Negociación y resolución de conflictos
-- Comunicación con stakeholders (incluyendo comunicación ejecutiva/C-level)
-- Gestión del cambio organizacional (change management)
-- Liderazgo de equipos remotos/híbridos
+- Negotiation and conflict resolution
+- Stakeholder communication (including executive/C-level communication)
+- Organizational change management
+- Leading remote/hybrid teams
 
-## Riesgo, finanzas y estrategia
+## Risk, finance, and strategy
 
-- Gestión de riesgos cuantitativa (Monte Carlo, análisis de sensibilidad)
-- Fundamentos de presupuesto y ROI de proyectos
-- Alineación de proyectos con estrategia corporativa
+- Quantitative risk management (Monte Carlo, sensitivity analysis)
+- Budget and project ROI fundamentals
+- Aligning projects with corporate strategy
 
-## Tendencias 2025-2026 a vigilar
+## 2025-2026 trends to watch
 
-- PM aumentado por IA (no reemplazado, pero sí transformado el rol)
-- Sostenibilidad y criterios ESG en gestión de proyectos
-- Gestión de proyectos de IA/ML (ciclos de vida distintos a software tradicional)
+- AI-augmented PM (not replaced, but the role is transformed)
+- Sustainability and ESG criteria in project management
+- Managing AI/ML projects (lifecycles distinct from traditional software)
