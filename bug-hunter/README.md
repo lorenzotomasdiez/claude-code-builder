@@ -83,13 +83,28 @@ standard `feature-implementer`'s tester agent applies to feature tests.
 
 ## Smoke test
 
-IN PROGRESS. A trivial, self-contained bug was planted in
-`.smoke-scratch/calc.js` (an `average()` function with a stray `+ 1` that
-makes `average([1,2,3])` return `3` instead of `2`), and a headless
-`claude -p` session scoped to `bug-hunter/` was launched in the background
-to run `/bug-hunter` against it end to end (reproduce via the real
-`node -e` invocation, fix only `.smoke-scratch/calc.js`, add a
-Node-assertion regression test into `.smoke-scratch/`). This section will
-be replaced with the real, observed pass/fail result once that run
-completes - never with a fabricated result, per this repo's "never fake
-success" rule.
+PASS. A trivial, self-contained bug was planted in `.smoke-scratch/calc.js`
+(an `average()` function with a stray `+ 1` that made `average([1,2,3])`
+return `3` instead of `2`), and a headless `claude -p` session scoped to
+`bug-hunter/` ran `/bug-hunter` against it end to end via a real Workflow
+tool call.
+
+Observed result:
+
+- **Reproduce**: confirmed the exact failure via the real `node -e`
+  invocation specified in the bug report (`average([1,2,3])` printed `3`).
+- **Hypothesize / Converge**: 4 parallel lenses ran; the data-flow lens
+  correctly identified the root cause (`total / numbers.length + 1`
+  evaluates as `(total / numbers.length) + 1` due to operator precedence),
+  the others self-ruled-out, and the converger recorded why.
+- **Fix**: removed the stray `+ 1` in `.smoke-scratch/calc.js`; no other
+  file was touched.
+- **Regression Test**: added `.smoke-scratch/calc.test.js` using plain Node
+  `assert`, and mutation-checked it - confirmed the test fails against the
+  original buggy code and passes against the fix.
+- **Verify**: an independent re-run of the repro and the regression test,
+  plus extra probe inputs ([10,20,30], [5], [-1,-2,-3], [1,2]) all produced
+  correct results, confirming a general fix rather than a hardcoded patch.
+
+Final verdict: **pass**, original repro fixed, regression test passed via
+mutation check, no outstanding issues.
