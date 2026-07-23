@@ -29,6 +29,7 @@ You may add workflows beyond this list when you judge them valuable; if you do, 
 
 14. `architecture-designer` - produce the architecture document set the "Fundamentals of Software Architecture" way for a new service or feature: architecture characteristics, component design, ADRs, tech-stack decision records. Experts: software-architect.
 15. `feedback-triage` - cluster raw user feedback into product signals, opportunities, and prioritized bets. Experts: product-owner, researcher, marketing-expert.
+16. `qa-suite` [added] - QA a service/area end to end: the qa-architect inventories existing tests and docs and designs a layered test strategy (unit/integration/e2e/contract/performance) with concrete gaps, the qa-engineer writes the missing tests and runs the suite, a coverage critic verifies the delivered tests cover the strategy (capped loop), and a reporter writes up findings and remaining risk. Experts: qa-architect, qa-engineer.
 
 ## Notes for the builder
 
