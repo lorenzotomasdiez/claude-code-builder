@@ -52,16 +52,23 @@ This workflow makes real working-tree changes (it runs the developer and tester 
 
 ## Smoke test
 
-**Status: IN PROGRESS - not yet recorded.** Per the project's Definition of Done, this section will only claim PASS/FAIL once a real run has actually finished; no result is faked here in the meantime.
+**Status: PASS.**
 
-As with `code-review/`, Claude Code discovers project subagents by walking **up** from the session's working directory, not down into subdirectories - so the smoke test must run from a session whose cwd is `feature-implementer/` itself (see `code-review/README.md` for the full mechanism and its live confirmation).
+As with `code-review/`, Claude Code discovers project subagents by walking **up** from the session's working directory, not down into subdirectories - so the smoke test ran from a headless session whose cwd was `feature-implementer/` itself (see `code-review/README.md` for the full mechanism and its live confirmation).
 
-Because this workflow's developer and tester agents make real file changes, the smoke test is scoped to a trivial, throwaway ticket confined to a scratch subdirectory (`feature-implementer/.smoke-scratch/`, to be deleted immediately after the run) rather than touching any real product code, per this workflow's own "point it at a scratch branch" guidance above and the project rule against polluting real state.
+Because this workflow's developer and tester agents make real file changes, the smoke test was scoped to a trivial, throwaway ticket confined to a scratch subdirectory (`feature-implementer/.smoke-scratch/`, deleted immediately after the run) rather than touching any real product code, per this workflow's own "point it at a scratch branch" guidance above.
 
-**Reproduction started:** a headless session (`claude -p ... --dangerously-skip-permissions`) was launched with its working directory set to `feature-implementer/`, instructed to call the `Workflow` tool directly with `scriptPath: ".claude/workflows/feature-implementer.js"` and:
+**Input:** a headless session (`claude -p ... --dangerously-skip-permissions`) was launched with its working directory set to `feature-implementer/`, instructed to call the `Workflow` tool directly with `scriptPath: ".claude/workflows/feature-implementer.js"` and:
 
 ```json
 {"ticket": "Add a pure function `add(a, b)` that returns the sum of two numbers, in a new file under .smoke-scratch/, plus a test proving it works.", "context": "Trivial smoke-test ticket for the feature-implementer workflow. Keep every change confined to .smoke-scratch/."}
 ```
 
-This run was still in flight (implementing/testing/self-reviewing real slices takes longer than a text-only pipeline like `code-review`'s) when this iteration's time budget ended. The next iteration should check on it (or re-run it if it did not survive) and record the actual pass/fail result here, then delete `.smoke-scratch/` and confirm `git status` is clean - never write a result here that was not observed from a real run.
+**Result:** the full pipeline ran end-to-end - Clarify -> Plan (2 slices) -> Implement/Test/Review each slice in order -> Draft PR - with every stage's structured output schema-validated.
+
+- Slice 1 (`add.js`, pure `add(a, b)`): tester wrote 6 `node:test` cases (positive, negative, zero identity, no-mutation, no-side-effects, export shape), all passing; self-review verdict `ready`, no revision needed.
+- Slice 2 (`add.test.js`, the test file itself): implementer found it already scaffolded by slice 1's tester and completed it to match the spec's required cases; tester ran a mutation test (temporarily broke `add.js`) and confirmed 5/8 cases correctly failed, proving the suite is load-bearing, then restored and reconfirmed 8/8 pass; self-review verdict `ready`.
+- PR-writer synthesized the spec, plan, and both slices' real outcomes into one PR body.
+- Stats: 9 agents, 0 errors, 120,184 tokens, 49 tool calls, ~4m27s wall time.
+
+`.smoke-scratch/` was deleted and `git status` confirmed clean after the run.
