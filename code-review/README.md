@@ -49,25 +49,16 @@ With no argument it reviews the working tree's pending diff against the repo's b
 
 ## Smoke test
 
-**Blocked - not yet passing. Documented honestly per the project's Definition of Done, not faked.**
+**Diagnosis corrected; full pipeline run still needs to be completed and recorded. Documented honestly per the project's Definition of Done, not faked.**
 
-Attempted: invoked `.claude/workflows/code-review.js` directly via the Workflow tool with a trivial synthetic diff (a two-line Python snippet with an intentional SQL injection and a plaintext password comparison, used only to exercise the pipeline, not as a real review target) and `context` describing it as a smoke test.
+The prior iteration's note (kept below in spirit, corrected here) concluded the blocker was "custom agentTypes don't resolve mid-session." That conclusion was wrong, and the real mechanism is now confirmed via Claude Code's own documentation (`sub-agents` reference) plus a live reproduction:
 
-Result: every attempt failed at the first `agent()` call with:
+> "Project subagents are discovered by walking up from the current working directory, so every `.claude/agents/` between there and the repository root is scanned."
 
-```
-Error: agent({agentType}): agent type 'code-review-scoper' not found.
-Available agents: claude, Explore, general-purpose, Plan, statusline-setup
-```
+Agent discovery walks **up** from the session's working directory toward the filesystem root - it does not walk **down** into subdirectories. This monorepo's root working directory (`claude-workflows-gnhf/`) has no `.claude/agents/` of its own, and `code-review/.claude/agents/` sits *below* that root, not above it, so it is never on the discovery path when the session's cwd is the repo root. This is exactly the layout the project's "independently copyable" convention implies: each workflow directory is meant to become its own project root once copied out, at which point its `.claude/agents/` *is* the root-scanned directory.
 
-This was not specific to this workflow or to nesting. Diagnostic steps taken, in order:
+**Reproduction that confirms this (not a guess):** a fresh headless session (`claude -p ... --dangerously-skip-permissions`) was launched with its working directory set to `code-review/` itself (`cd code-review && claude -p '...'`). From that cwd, a direct `Agent` tool call with `subagent_type: 'code-review-scoper'` resolved and ran successfully, returning the expected response. The exact same agent name is unresolvable from the monorepo root. This isolates the cause to working-directory-relative discovery, not session caching, not file timing, and not a defect in this workflow's agent files.
 
-1. Ran the workflow with `scriptPath` pointing at `code-review/.claude/workflows/code-review.js` (its real, nested location) - failed with the error above.
-2. Changed the shell's working directory to `code-review/` and re-ran with a relative `scriptPath` - failed identically. The Workflow tool resolved the relative path against the new shell cwd (confirmed by the absolute path echoed back), but agent-type discovery was unaffected - it is not resolved relative to the invoking shell's cwd.
-3. Copied the same agent `.md` files and the workflow script to the repo's root `.claude/agents/` and `.claude/workflows/` (simulating what this directory becomes once copied out as its own standalone repo, per the project's "independently copyable" convention) and re-ran - failed identically.
-4. To isolate nesting from session-lifecycle caching, directly invoked the Agent tool with `subagent_type: 'prd-clarifier'` - an agent that has existed at `prd-generator/.claude/agents/prd-clarifier.md` since before this session started (it shipped in the repo's initial commit). This also failed with the same "not found" error and the same fixed list of built-in agents.
-5. As a final isolation step, placed a copy of `code-review-scoper.md` directly at the repo's root `.claude/agents/` (created mid-session) and invoked it directly via the Agent tool - also failed identically.
+A follow-up attempt to run the full `.claude/workflows/code-review.js` pipeline (5 lenses + verify + report) the same way, via a headless session scoped to `code-review/`, was started but had to be interrupted before completion to stay within this iteration's time budget - the outer headless process was still waiting on the backgrounded `Workflow` tool call when it was stopped. No error was observed before the interruption; the interruption was operational (time budget), not a workflow or agent-resolution failure.
 
-Conclusion: the set of available `agentType`s appears to be fixed at session start and is not refreshed by files that are created, moved, or already present on disk once the session is running - this reproduced even for `prd-clarifier`, which predates this session. This looks like a session-lifecycle constraint of the current environment, not a defect in this workflow's structure or file layout. All temporary root-level `.claude/agents` and `.claude/workflows` copies made during diagnosis were deleted; only the real files under `code-review/.claude/` remain.
-
-**Next step for whoever picks this up (a fresh session, e.g. the next iteration after this one is committed):** re-run the exact command in "Usage" above, or re-invoke the Workflow tool at `code-review/.claude/workflows/code-review.js` with the same trivial diff, from a session that starts *after* these files exist on disk. If `code-review-scoper` and friends resolve at that point, this smoke test blocker was purely session-lifecycle and this note can be replaced with a real pass/fail result. If they still do not resolve even in a fresh session, that points at nested (non-root) `.claude/agents/` directories not being discovered at all, which would require either flattening agent discovery to the project root or another fix before any workflow in this repo (including `prd-generator`) can actually run.
+**Next step:** from a session whose working directory is `code-review/` (e.g. `cd code-review && claude -p '<invoke the /code-review command or the Workflow tool per Usage above with a trivial diff>' --dangerously-skip-permissions`, or by opening a session directly in that directory), let the full pipeline run to completion and record the actual phase-by-phase result (raw finding count, confirmed count, and a report excerpt) here, replacing this note with a real pass/fail.
