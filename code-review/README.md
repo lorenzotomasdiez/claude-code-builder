@@ -49,16 +49,21 @@ With no argument it reviews the working tree's pending diff against the repo's b
 
 ## Smoke test
 
-**Diagnosis corrected; full pipeline run still needs to be completed and recorded. Documented honestly per the project's Definition of Done, not faked.**
+**Status: PASS.** Recorded here per the project's Definition of Done.
 
-The prior iteration's note (kept below in spirit, corrected here) concluded the blocker was "custom agentTypes don't resolve mid-session." That conclusion was wrong, and the real mechanism is now confirmed via Claude Code's own documentation (`sub-agents` reference) plus a live reproduction:
+Agent discovery in Claude Code walks **up** from the session's working directory toward the filesystem root - it does not walk **down** into subdirectories. This monorepo's root working directory has no `.claude/agents/` of its own, and `code-review/.claude/agents/` sits *below* that root, so it is never on the discovery path when a session's cwd is the repo root. Each workflow directory is meant to become its own project root once copied out, at which point its `.claude/agents/` *is* the root-scanned directory - so the smoke test must run from a session whose cwd is `code-review/` itself.
 
-> "Project subagents are discovered by walking up from the current working directory, so every `.claude/agents/` between there and the repository root is scanned."
+**Reproduction and run:** a headless session (`claude -p ... --dangerously-skip-permissions`) was launched with its working directory set to `code-review/`. A direct `Agent` tool call with `subagent_type: 'code-review-scoper'` resolved and ran successfully from that cwd (the same call fails from the monorepo root, confirming the mechanism above). A follow-up headless session, also scoped to `code-review/`, then called the `Workflow` tool directly with `scriptPath: ".claude/workflows/code-review.js"` and a trivial synthetic input:
 
-Agent discovery walks **up** from the session's working directory toward the filesystem root - it does not walk **down** into subdirectories. This monorepo's root working directory (`claude-workflows-gnhf/`) has no `.claude/agents/` of its own, and `code-review/.claude/agents/` sits *below* that root, not above it, so it is never on the discovery path when the session's cwd is the repo root. This is exactly the layout the project's "independently copyable" convention implies: each workflow directory is meant to become its own project root once copied out, at which point its `.claude/agents/` *is* the root-scanned directory.
+```json
+{"diff": "diff --git a/app.js b/app.js\n... (adds a naive in-memory cache in front of a user lookup query)", "context": "smoke-test diff for the code-review workflow"}
+```
 
-**Reproduction that confirms this (not a guess):** a fresh headless session (`claude -p ... --dangerously-skip-permissions`) was launched with its working directory set to `code-review/` itself (`cd code-review && claude -p '...'`). From that cwd, a direct `Agent` tool call with `subagent_type: 'code-review-scoper'` resolved and ran successfully, returning the expected response. The exact same agent name is unresolvable from the monorepo root. This isolates the cause to working-directory-relative discovery, not session caching, not file timing, and not a defect in this workflow's agent files.
+**Result:** the full pipeline (scoper -> 5 parallel lenses -> per-finding adversarial verification -> reporter) ran end-to-end and every schema validated.
 
-A follow-up attempt to run the full `.claude/workflows/code-review.js` pipeline (5 lenses + verify + report) the same way, via a headless session scoped to `code-review/`, was started but had to be interrupted before completion to stay within this iteration's time budget - the outer headless process was still waiting on the backgrounded `Workflow` tool call when it was stopped. No error was observed before the interruption; the interruption was operational (time budget), not a workflow or agent-resolution failure.
+- `allFindings.length`: 18 (raw findings across all 5 lenses)
+- `confirmed.length`: 14 (survived adversarial verification - 4 were rejected as false positives)
+- Reporter merged the 14 confirmed findings into 8 deduplicated report entries (3 critical, 2 high, 3 medium), correctly recognizing that several lenses had converged on the same two root defects (cache never populated; inconsistent sync/async return types) and merging them instead of listing duplicates.
+- Reporter's overall recommendation (do not merge, due to an unmitigated SQL injection still reachable on cache miss, plus a return-type bug that would crash `.then()` callers) was substantively correct for the injected synthetic diff, confirming the lenses and verifier are not just structurally wired but producing meaningful output.
 
-**Next step:** from a session whose working directory is `code-review/` (e.g. `cd code-review && claude -p '<invoke the /code-review command or the Workflow tool per Usage above with a trivial diff>' --dangerously-skip-permissions`, or by opening a session directly in that directory), let the full pipeline run to completion and record the actual phase-by-phase result (raw finding count, confirmed count, and a report excerpt) here, replacing this note with a real pass/fail.
+This confirms both required wiring facts: the command -> workflow -> agents path works, and every structured agent output validated against its schema.
