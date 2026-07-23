@@ -64,8 +64,20 @@ const CRITIQUE_SCHEMA = {
   required: ['file', 'verdict', 'issues'],
 }
 
-const scope = (typeof args === 'string' ? args : args && args.scope) || 'the whole repository'
-const maxTargets = (args && typeof args === 'object' && args.maxTargets) || 5
+// Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
+// string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
+let input = args
+if (typeof input === 'string') {
+  try {
+    const parsed = JSON.parse(input)
+    if (parsed && typeof parsed === 'object') input = parsed
+  } catch {
+    // not JSON - a genuine plain-string argument, keep as-is
+  }
+}
+
+const scope = (typeof input === 'string' ? input : input && input.scope) || 'the whole repository'
+const maxTargets = (input && typeof input === 'object' && input.maxTargets) || 5
 
 // --- Phase 1: Scan (single agent) ---
 phase('Scan')

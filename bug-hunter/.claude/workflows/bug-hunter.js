@@ -93,14 +93,26 @@ const VERDICT_SCHEMA = {
   required: ['verdict', 'originalReproFixed', 'regressionTestPassed'],
 }
 
-const bugReport = typeof args === 'string' ? args : args && args.bugReport
+// Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
+// string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
+let input = args
+if (typeof input === 'string') {
+  try {
+    const parsed = JSON.parse(input)
+    if (parsed && typeof parsed === 'object') input = parsed
+  } catch {
+    // not JSON - a genuine plain-string argument, keep as-is
+  }
+}
+
+const bugReport = typeof input === 'string' ? input : input && input.bugReport
 if (!bugReport) {
   throw new Error(
     'Missing the bug report. Call this workflow with args set to either a plain string ' +
-    '(the bug report itself) or an object shaped { "bugReport": "...", "context": "optional extra context" } - not a JSON-encoded string.'
+    '(the bug report itself) or an object shaped { "bugReport": "...", "context": "optional extra context" }.'
   )
 }
-const context = (args && typeof args === 'object' && args.context) || ''
+const context = (input && typeof input === 'object' && input.context) || ''
 
 // --- Phase 1: Reproduce (single agent, sequential) ---
 phase('Reproduce')

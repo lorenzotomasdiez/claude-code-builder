@@ -53,14 +53,26 @@ const CRITIQUE_SCHEMA = {
   required: ['lens', 'verdict', 'issues'],
 }
 
-const idea = typeof args === 'string' ? args : args && args.idea
+// Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
+// string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
+let input = args
+if (typeof input === 'string') {
+  try {
+    const parsed = JSON.parse(input)
+    if (parsed && typeof parsed === 'object') input = parsed
+  } catch {
+    // not JSON - a genuine plain-string argument, keep as-is
+  }
+}
+
+const idea = typeof input === 'string' ? input : input && input.idea
 if (!idea) {
   throw new Error(
     'Missing the product idea. Call this workflow with args set to either a plain string ' +
-    '(the idea itself) or an object shaped { "idea": "...", "date": "YYYY-MM-DD" } - not a JSON-encoded string.'
+    '(the idea itself) or an object shaped { "idea": "...", "date": "YYYY-MM-DD" }.'
   )
 }
-const date = (args && typeof args === 'object' && args.date) || 'unknown - fill in before this leaves Draft'
+const date = (input && typeof input === 'object' && input.date) || 'unknown - fill in before this leaves Draft'
 
 // --- Phase 1: Clarify (single agent, sequential) ---
 phase('Clarify')

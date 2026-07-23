@@ -100,9 +100,9 @@ if (!dependency || !toVersion) {
 
 const context = `Dependency: ${dependency}\nCurrent version: ${fromVersion || 'unspecified - detect it from the manifest in scope'}\nTarget version: ${toVersion}\nScope: ${scope}`
 
-// --- Phase 1: Assess (parallel fan-out, 3 independent lenses) ---
+// --- Phase 1: Assess (two independent lenses in parallel, then an informed migration plan) ---
 phase('Assess')
-const [breaking, security, migration] = await parallel([
+const [breaking, security] = await parallel([
   () => agent(
     `Identify breaking API/behavior changes for this upgrade.\n${context}`,
     { agentType: 'dependency-upgrade-breaking-change-analyst', label: 'assess:breaking', phase: 'Assess', schema: BREAKING_SCHEMA }
@@ -111,12 +111,14 @@ const [breaking, security, migration] = await parallel([
     `Check security advisories for this upgrade.\n${context}`,
     { agentType: 'dependency-upgrade-security-advisor', label: 'assess:security', phase: 'Assess', schema: SECURITY_SCHEMA }
   ),
-  () => agent(
-    `Plan the safe migration sequence for this upgrade, given the scope below (breaking-change and security findings will be shared with you once the other two lenses complete; for now plan generically from the scope and version delta).\n${context}`,
-    { agentType: 'dependency-upgrade-migration-planner', label: 'assess:migration', phase: 'Assess', schema: MIGRATION_SCHEMA }
-  ),
 ])
 log(`Assessment complete: breaking-change risk=${breaking.riskLevel}, security=${security.recommendation} (urgency ${security.urgency})`)
+
+// Migration plan runs after the two lenses so it can sequence around the real breakage and advisories.
+const migration = await agent(
+  `Plan the safe migration sequence for this upgrade, using the breaking-change and security findings below to order the steps.\n${context}\n\nBreaking-change findings:\n${JSON.stringify(breaking, null, 2)}\n\nSecurity findings:\n${JSON.stringify(security, null, 2)}`,
+  { agentType: 'dependency-upgrade-migration-planner', label: 'assess:migration', phase: 'Assess', schema: MIGRATION_SCHEMA }
+)
 
 // --- Phase 2/3: Apply -> Verify, capped revise loop ---
 const MAX_ROUNDS = 3

@@ -74,14 +74,26 @@ const REVIEW_SCHEMA = {
   required: ['verdict', 'issues'],
 }
 
-const ticket = typeof args === 'string' ? args : args && args.ticket
+// Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
+// string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
+let input = args
+if (typeof input === 'string') {
+  try {
+    const parsed = JSON.parse(input)
+    if (parsed && typeof parsed === 'object') input = parsed
+  } catch {
+    // not JSON - a genuine plain-string argument, keep as-is
+  }
+}
+
+const ticket = typeof input === 'string' ? input : input && input.ticket
 if (!ticket) {
   throw new Error(
     'Missing the ticket/user story. Call this workflow with args set to either a plain string ' +
-    '(the ticket text itself) or an object shaped { "ticket": "...", "context": "optional extra context" } - not a JSON-encoded string.'
+    '(the ticket text itself) or an object shaped { "ticket": "...", "context": "optional extra context" }.'
   )
 }
-const context = (args && typeof args === 'object' && args.context) || ''
+const context = (input && typeof input === 'object' && input.context) || ''
 const MAX_REVISION_ROUNDS = 1
 
 // --- Phase 1: Clarify (single agent, sequential) ---
