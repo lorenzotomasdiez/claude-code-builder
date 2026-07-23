@@ -92,7 +92,7 @@ const scope = await agent(
   `Build a baseline brief for this performance investigation. Context: ${context || 'none supplied'}.\n\nTarget:\n${target}`,
   { agentType: 'perf-investigation-scoper', schema: SCOPE_SCHEMA }
 )
-log(`Scope ready: ${scope.affectedPaths.length} affected path(s), ${scope.knownMetrics.length} known metric(s)`)
+log(`Scope ready: ${scope.affectedPaths.length} affected path(s), ${(scope.knownMetrics || []).length} known metric(s)`)
 
 // --- Phase 2/3: Hypothesize (parallel lenses) -> Evidence (parallel per hypothesis), pipelined per lens ---
 const LENSES = [

@@ -91,7 +91,7 @@ const scope = await agent(
   `Map the attack surface for this authorized security audit. Context: ${context || 'none supplied'}.\n\nTarget:\n${target}`,
   { agentType: 'security-audit-scoper', schema: SCOPE_SCHEMA }
 )
-log(`Scope ready: ${scope.entryPoints.length} entry point(s), ${scope.trustBoundaries.length} trust boundary note(s)`)
+log(`Scope ready: ${scope.entryPoints.length} entry point(s), ${(scope.trustBoundaries || []).length} trust boundary note(s)`)
 
 // --- Phase 2/3: Audit (parallel lenses) -> Verify (parallel per finding), pipelined per lens ---
 const LENSES = [

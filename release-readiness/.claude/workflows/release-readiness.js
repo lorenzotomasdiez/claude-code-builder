@@ -60,7 +60,7 @@ const scope = await agent(
   `Build a release brief for this release readiness check. Context: ${context || 'none supplied'}.\n\nRelease target:\n${target}`,
   { agentType: 'release-readiness-scoper', schema: SCOPE_SCHEMA }
 )
-log(`Scope ready: ${scope.changedAreas.length} changed area(s), target env: ${scope.targetEnvironment}`)
+log(`Scope ready: ${(scope.changedAreas || []).length} changed area(s), target env: ${scope.targetEnvironment}`)
 
 // --- Phase 2: Gates (five independent parallel gates) ---
 phase('Gates')
@@ -81,7 +81,8 @@ const gateResults = await parallel(GATES.map(g => () =>
 ))
 
 const gates = gateResults.filter(Boolean)
-const blockingGates = gates.filter(g => g.blocking)
+// A failing gate blocks the release even if the agent forgot to set blocking=true.
+const blockingGates = gates.filter(g => g.blocking || g.status === 'fail')
 log(`${gates.length}/${GATES.length} gates reported, ${blockingGates.length} blocking`)
 
 // --- Phase 3: Report (single agent, sequential) ---
