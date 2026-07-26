@@ -1,22 +1,27 @@
 ---
-description: Take a ticket or user story to a PR - clarify, plan into slices, implement/test/self-review each slice, and draft the PR body
-argument-hint: [ticket text, file path, or issue number/URL - defaults to asking the user for the ticket if omitted]
+description: Take a TDD blueprint to a PR by doing real TDD - failing test first, verified red, implemented to a real green exit code, reviewed by three independent lenses. Runs after /tdd-blueprint.
+argument-hint: [the feature name or docs/testing/<slug>/ path whose TDD blueprint should be implemented - defaults to asking which blueprint to build]
 ---
 
-Implement this ticket: $ARGUMENTS
+Implement the TDD blueprint for: $ARGUMENTS
 
-1. Determine the ticket text to implement:
-   - If `$ARGUMENTS` names an issue (a number or URL), fetch it with `gh issue view`.
-   - If `$ARGUMENTS` names a file path, read that file's contents.
-   - Otherwise treat `$ARGUMENTS` as the raw ticket/user story text.
-   - If there is no ticket text at all, ask the user for it and stop - do not call the workflow with empty input.
+1. Locate the blueprint. This workflow runs downstream of `/tdd-blueprint` and does not invent its own acceptance criteria, so it cannot start without one.
+   - Look under `docs/testing/` for the folder matching `$ARGUMENTS`. You need two files from it: `behavior-specs.md` and `tdd-plan.md`.
+   - If `$ARGUMENTS` is empty, list the folders under `docs/testing/` and ask the user which blueprint to implement. Stop until they answer.
+   - If there is no `docs/testing/` folder, or the named folder is missing `behavior-specs.md` or `tdd-plan.md`, stop and tell the user to run `/tdd-blueprint <the feature>` first. Do not substitute a ticket, an issue, or your own reading of the codebase for a blueprint - the whole design of this workflow assumes the specs were produced and adversarially critiqued upstream.
 
-2. Call the Workflow tool now, as an actual tool call (not a description of one), with:
+2. Read both files in full. Pass their **contents**, not their paths - the workflow's reader agent works from the real text.
+
+3. Call the Workflow tool now, as an actual tool call (not a description of one), with:
    - `scriptPath`: `.claude/workflows/feature-implementer.js`
-   - `args`: a JSON object literal `{ "ticket": "<the ticket text>", "context": "<any extra context - target repo area, related tickets, constraints>" }` (an actual object in the tool call payload, NOT a JSON-encoded string).
+   - `args`: a JSON object literal `{ "behaviorSpecs": "<contents of behavior-specs.md>", "tddPlan": "<contents of tdd-plan.md>", "context": "<optional: target repo area, constraints, related work>" }` (an actual object in the tool call payload, NOT a JSON-encoded string).
 
 Do not paraphrase this into prose for a background workflow to interpret - the `args` field must be set directly on the Workflow tool call.
 
-3. When it returns, show the user the `prBody` field directly as the PR description. Also summarize, per slice, whether it reached `ready` on self-review or still has open issues (from `slices[].review`), so the user knows what to double-check before actually opening the PR.
+4. When it returns, lead with the bad news, not the PR body:
+   - If `blockedSlices` is non-empty, say so first: how many slices are blocked, which ones, and each `blockedReason`. A blocked slice means the tests did not reach a real exit code of 0, or a review lens never cleared it. This is the single most important thing for the user to know and must not be buried under the PR description.
+   - If `notGenuinelyRed` is non-empty, flag those slices too: their tests passed *before* the implementation existed, which usually means the test is not asserting anything real. A green suite over hollow tests is worse than a red one.
+   - Then show the `prBody` field directly as the PR description.
+   - Finally, note any `blueprint.gaps` carried in from the blueprint itself - open questions or assumed thresholds a human still needs to settle.
 
-4. Do not push a branch or open the actual PR yourself unless the user explicitly asks you to - this command produces the PR body and the working-tree changes; opening the PR is a separate, confirmable action.
+5. Do not push a branch or open the actual PR yourself unless the user explicitly asks you to - this command produces the PR body and the working-tree changes; opening the PR is a separate, confirmable action. If any slice is blocked, say plainly that the PR is not ready to open.
