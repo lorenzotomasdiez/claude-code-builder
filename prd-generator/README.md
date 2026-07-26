@@ -61,6 +61,22 @@ pair until the reviewers sign off or a round cap is hit.
 That's it - the command runs the workflow, the workflow orchestrates the
 five agents above, and the final PRD lands in `docs/product-specs/`.
 
+## Smoke test
+
+**Status: not yet run.** Recorded honestly per the project's Definition of Done rule 4.
+
+This workflow is the canonical template and dates from the initial commit, which predates
+the smoke-test requirement in `CLAUDE.md`. No end-to-end invocation has ever been recorded
+for it, and there is no evidence of one in the git history. Its wiring is verified
+mechanically - `node scripts/validate-workflow.mjs prd-generator` passes all ten checks,
+including that every `agentType` resolves to an agent definition, every `{schema:}`
+reference resolves to a defined const, and every phase used is declared in `meta.phases` -
+but mechanical wiring is not the same as a real run, and this section will keep saying so
+until someone runs `/prd-generator <a real idea>` and records the result here.
+
+Worth noting for whoever reads this next: the reference implementation that every other
+workflow is measured against is one of the packages that has never actually executed.
+
 ## Why parallel critique instead of one reviewer
 
 A single `prd-critic` pass tends to rubber-stamp whatever lens it happens to
