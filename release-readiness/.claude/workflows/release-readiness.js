@@ -4,7 +4,7 @@ export const meta = {
   phases: [
     { title: 'Scope', detail: 'summarize what is shipping and where' },
     { title: 'Gates', detail: 'five independent parallel gates: tests, security, docs, migrations, rollback' },
-    { title: 'Report', detail: 'synthesize gate verdicts into one go/no-go report' },
+    { title: 'Report', detail: 'synthesize gate verdicts into one go/no-go report (opus: judgment-heavy)' },
   ],
 }
 
@@ -89,7 +89,7 @@ log(`${gates.length}/${GATES.length} gates reported, ${blockingGates.length} blo
 phase('Report')
 const report = await agent(
   `Synthesize these five independent release-gate verdicts into one go/no-go release readiness report. Rule: any gate with blocking=true means the overall verdict is no-go, no exceptions.\n\nRelease brief:\n${JSON.stringify(scope, null, 2)}\n\nGate verdicts:\n${JSON.stringify(gates, null, 2)}`,
-  { agentType: 'release-readiness-reporter' }
+  { agentType: 'release-readiness-reporter', model: 'opus' }
 )
 
 const verdict = blockingGates.length > 0 ? 'no-go' : (gates.some(g => g.status === 'warn') ? 'conditional-go' : 'go')

@@ -5,7 +5,7 @@ export const meta = {
     { title: 'Scope', detail: 'turn the raw question into decision type, options, criteria, constraints' },
     { title: 'Research', detail: 'parallel fan-out: official, community, alternatives, risk lenses' },
     { title: 'Verify', detail: 'independently fact-check each lens\'s findings, per lens' },
-    { title: 'Synthesize', detail: 'options matrix and recommendation with a stated confidence level' },
+    { title: 'Synthesize', detail: 'options matrix and recommendation with a stated confidence level (opus: judgment-heavy)' },
   ],
 }
 
@@ -129,7 +129,7 @@ log(`${allVerified.length}/${LENSES.length} lenses returned verified findings ($
 phase('Synthesize')
 const report = await agent(
   `Synthesize these verified research findings into an options matrix and a recommendation with a stated confidence level. If the evidence base is too thin, say so plainly.\n\nBrief:\n${JSON.stringify(brief, null, 2)}\n\nVerified findings by lens:\n${JSON.stringify(allVerified, null, 2)}`,
-  { agentType: 'spike-research-synthesizer' }
+  { agentType: 'spike-research-synthesizer', model: 'opus' }
 )
 
 return { brief, verifiedByLens: allVerified, report }

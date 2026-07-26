@@ -5,7 +5,7 @@ export const meta = {
     { title: 'Clarify', detail: 'turn the raw idea into a structured, sized brief' },
     { title: 'Research', detail: 'parallel fan-out: market, technical, ux lenses' },
     { title: 'Draft', detail: 'write the first PRD draft against the house structure' },
-    { title: 'Critique', detail: 'parallel adversarial review against the Quality Checklist: feasibility, completeness, business-value' },
+    { title: 'Critique', detail: 'parallel adversarial review against the Quality Checklist: feasibility, completeness, business-value (opus: judgment-heavy)' },
     { title: 'Revise', detail: 'incorporate critique, re-review, repeat until clean or capped' },
   ],
 }
@@ -111,7 +111,7 @@ while (round < MAX_ROUNDS) {
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
       `Critique this PRD draft through the ${lens} lens. Be adversarial - look for gaps, unstated assumptions, and unmeasurable goals.\n\n${draft}`,
-      { agentType: 'prd-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA }
+      { agentType: 'prd-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)
   allCritiques = critiques

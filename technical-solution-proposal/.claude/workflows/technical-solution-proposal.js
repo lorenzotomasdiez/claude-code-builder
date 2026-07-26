@@ -3,9 +3,9 @@ export const meta = {
   description: 'Turn a PRD into a technical solution proposal via a cross-examining expert panel debate, not isolated parallel review',
   phases: [
     { title: 'Scope', detail: 'turn the PRD into a solution-neutral technical brief' },
-    { title: 'Propose', detail: 'parallel fan-out: architect, backend, frontend, devops, qa, security each propose independently' },
-    { title: 'Debate', detail: 'panelists cross-examine and revise each other\'s proposals, capped rounds' },
-    { title: 'Synthesize', detail: 'resolve agreement and disagreement into one coherent proposal' },
+    { title: 'Propose', detail: 'parallel fan-out: architect, backend, frontend, devops, qa, security each propose independently (opus: panel-debate judgment)' },
+    { title: 'Debate', detail: 'panelists cross-examine and revise each other\'s proposals, capped rounds (opus: panel-debate judgment)' },
+    { title: 'Synthesize', detail: 'resolve agreement and disagreement into one coherent proposal (opus: panel-debate judgment)' },
   ],
 }
 
@@ -112,7 +112,7 @@ phase('Propose')
 const initialResults = await parallel(PANEL.map(p => () =>
   agent(
     `You are proposing (not debating yet). Propose your approach to this technical brief:\n\n${JSON.stringify(brief, null, 2)}`,
-    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA }
+    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA, model: 'opus' }
   )
 ))
 
@@ -145,7 +145,7 @@ for (let round = 1; round <= MAX_DEBATE_ROUNDS; round++) {
       `Round ${round} of debate. Here are all current proposals, including your own (lens: ${p.key}):\n\n${JSON.stringify(proposalsSnapshot, null, 2)}\n\n` +
       `Challenges other seats raised against you in the previous round (empty if none yet):\n${JSON.stringify(challengesForMe, null, 2)}\n\n` +
       `Respond to those challenges (concede and revise, or defend with reasoning), then raise your own concrete challenges against other seats' proposals where you disagree, and list anything still unresolved.`,
-      { agentType: p.agentType, label: `debate:${p.key}:r${round}`, phase: 'Debate', schema: DEBATE_SCHEMA }
+      { agentType: p.agentType, label: `debate:${p.key}:r${round}`, phase: 'Debate', schema: DEBATE_SCHEMA, model: 'opus' }
     )
   }))
   // Pair positionally with activeSeats (not by r.lens, which is agent-echoed and unreliable)
@@ -190,7 +190,7 @@ const proposal = await agent(
   `Technical brief:\n${JSON.stringify(brief, null, 2)}\n\n` +
   `Final proposals per seat:\n${JSON.stringify(finalProposals, null, 2)}\n\n` +
   `Full debate transcript (challenges, responses, concessions, unresolved disagreements per round):\n${JSON.stringify(debateTranscript, null, 2)}`,
-  { agentType: 'tsp-synthesizer' }
+  { agentType: 'tsp-synthesizer', model: 'opus' }
 )
 
 return { brief, initialProposals, debateTranscript, finalProposals, proposal }

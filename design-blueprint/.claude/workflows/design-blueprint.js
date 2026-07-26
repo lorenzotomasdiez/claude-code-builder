@@ -3,9 +3,9 @@ export const meta = {
   description: 'Turn a product idea or PRD into a set of buildable UX/UI design documents via a cross-examining panel debate (UX designer, product owner, growth) that weighs what works best against what is most profitable, then synthesizes and authors the docs',
   phases: [
     { title: 'Frame', detail: 'turn the idea/PRD into a solution-neutral design brief' },
-    { title: 'Propose', detail: 'parallel fan-out: UX, product, and growth each propose independently' },
-    { title: 'Debate', detail: 'seats cross-examine and revise each other\'s proposals, capped rounds' },
-    { title: 'Synthesize', detail: 'resolve the tensions into one coherent set of design decisions' },
+    { title: 'Propose', detail: 'parallel fan-out: UX, product, and growth each propose independently (opus: panel-debate judgment)' },
+    { title: 'Debate', detail: 'seats cross-examine and revise each other\'s proposals, capped rounds (opus: panel-debate judgment)' },
+    { title: 'Synthesize', detail: 'resolve the tensions into one coherent set of design decisions (opus: panel-debate judgment)' },
     { title: 'Author', detail: 'write the design-decisions, user-flows, screens & UI, and landing-page documents in parallel' },
   ],
 }
@@ -157,7 +157,7 @@ phase('Propose')
 const initialResults = await parallel(PANEL.map(p => () =>
   agent(
     `You are proposing (not debating yet). Put forward your view on how this product should be designed, from your lens:\n\n${JSON.stringify(brief, null, 2)}`,
-    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA }
+    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA, model: 'opus' }
   )
 ))
 
@@ -190,7 +190,7 @@ for (let round = 1; round <= MAX_DEBATE_ROUNDS; round++) {
       `Round ${round} of debate. Here are all current proposals, including your own (lens: ${p.key}):\n\n${JSON.stringify(proposalsSnapshot, null, 2)}\n\n` +
       `Challenges other seats raised against you in the previous round (empty if none yet):\n${JSON.stringify(challengesForMe, null, 2)}\n\n` +
       `Respond to those challenges (concede and revise, or defend with reasoning), then raise your own concrete challenges against other seats' proposals where you disagree - especially where the best UX and the most profitable choice pull apart - and list anything still unresolved.`,
-      { agentType: p.agentType, label: `debate:${p.key}:r${round}`, phase: 'Debate', schema: DEBATE_SCHEMA }
+      { agentType: p.agentType, label: `debate:${p.key}:r${round}`, phase: 'Debate', schema: DEBATE_SCHEMA, model: 'opus' }
     )
   }))
   // Pair positionally with activeSeats (not by r.lens, which is agent-echoed and unreliable)
@@ -235,7 +235,7 @@ const decisions = await agent(
   `Design brief:\n${JSON.stringify(brief, null, 2)}\n\n` +
   `Final proposals per seat:\n${JSON.stringify(finalProposals, null, 2)}\n\n` +
   `Full debate transcript (challenges, responses, concessions, unresolved disagreements per round):\n${JSON.stringify(debateTranscript, null, 2)}`,
-  { agentType: 'db-synthesizer', schema: DECISIONS_SCHEMA }
+  { agentType: 'db-synthesizer', schema: DECISIONS_SCHEMA, model: 'opus' }
 )
 log(`Decisions ready: ${(decisions.prioritizedScope || []).length} scope item(s), ${(decisions.userFlows || []).length} flow(s), ${(decisions.landingPlan || []).length} landing section(s)`)
 

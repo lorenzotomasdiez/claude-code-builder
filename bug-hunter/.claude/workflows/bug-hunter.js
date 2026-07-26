@@ -4,7 +4,7 @@ export const meta = {
   phases: [
     { title: 'Reproduce', detail: 'confirm the bug as an end user would actually hit it' },
     { title: 'Hypothesize', detail: 'parallel root-cause investigation: data-flow, state/timing, boundary-input, integration lenses' },
-    { title: 'Converge', detail: 'pick the one real root cause, backed by evidence, rejecting the rest' },
+    { title: 'Converge', detail: 'pick the one real root cause, backed by evidence, rejecting the rest (opus: judgment-heavy)' },
     { title: 'Fix', detail: 'implement the minimal correct fix' },
     { title: 'Regression Test', detail: 'write a test proven (via mutation check) to catch this exact bug' },
     { title: 'Verify', detail: 'independently re-run the repro and the new test against the fixed code' },
@@ -141,7 +141,7 @@ log(`${hypotheses.length} hypothesis/es gathered`)
 phase('Converge')
 const convergence = await agent(
   `Converge on the single real root cause for this bug from the competing hypotheses below, verifying against the code directly rather than trusting self-reported confidence.\n\nConfirmed repro:\n${JSON.stringify(repro, null, 2)}\n\nHypotheses:\n${JSON.stringify(hypotheses, null, 2)}`,
-  { agentType: 'bug-hunter-converger', schema: CONVERGENCE_SCHEMA }
+  { agentType: 'bug-hunter-converger', schema: CONVERGENCE_SCHEMA, model: 'opus' }
 )
 log(`Root cause: ${convergence.rootCause} (${convergence.location})`)
 

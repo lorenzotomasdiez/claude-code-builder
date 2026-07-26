@@ -2,10 +2,10 @@ export const meta = {
   name: 'architecture-designer',
   description: 'Produce an architecture document set (characteristics, component design, ADRs, tech-stack decisions) for a new service or feature via clarify -> draft -> critique -> revise',
   phases: [
-    { title: 'Clarify', detail: 'turn the raw request into a structured architecture brief' },
-    { title: 'Draft', detail: 'write the first document set: characteristics, components, ADRs, tech stack' },
-    { title: 'Critique', detail: 'parallel adversarial review: trade-off-rigor, adr-quality, operability' },
-    { title: 'Revise', detail: 'incorporate critique, re-review, repeat until clean or capped' },
+    { title: 'Clarify', detail: 'turn the raw request into a structured architecture brief (opus: architecture-level judgment)' },
+    { title: 'Draft', detail: 'write the first document set: characteristics, components, ADRs, tech stack (opus: architecture-level judgment)' },
+    { title: 'Critique', detail: 'parallel adversarial review: trade-off-rigor, adr-quality, operability (opus: architecture-level judgment)' },
+    { title: 'Revise', detail: 'incorporate critique, re-review, repeat until clean or capped (opus: architecture-level judgment)' },
   ],
 }
 
@@ -68,7 +68,7 @@ const date = (input && typeof input === 'object' && input.date) || 'unknown - fi
 phase('Clarify')
 const brief = await agent(
   `Turn this raw architecture request into a structured brief: "${request}". If critical details are missing, make explicit, labeled assumptions instead of blocking.`,
-  { agentType: 'architecture-clarifier', schema: BRIEF_SCHEMA }
+  { agentType: 'architecture-clarifier', schema: BRIEF_SCHEMA, model: 'opus' }
 )
 log(`Brief ready. Top characteristic: ${brief.drivingCharacteristics[0]?.name}`)
 
@@ -76,7 +76,7 @@ log(`Brief ready. Top characteristic: ${brief.drivingCharacteristics[0]?.name}`)
 phase('Draft')
 let draft = await agent(
   `Write the full architecture document set from this brief, following the house structure exactly. Date to use for "Last updated": ${date}.\n\nBrief:\n${JSON.stringify(brief, null, 2)}`,
-  { agentType: 'architecture-writer' }
+  { agentType: 'architecture-writer', model: 'opus' }
 )
 
 // --- Phase 3/4: Critique -> Revise loop (parallel critics, capped rounds) ---
@@ -90,7 +90,7 @@ while (round < MAX_ROUNDS) {
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
       `Critique this architecture document draft through the ${lens} lens. Be adversarial - look for hidden trade-offs, weak ADRs, and unoperable designs.\n\n${draft}`,
-      { agentType: 'architecture-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA }
+      { agentType: 'architecture-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)
   allCritiques = critiques
@@ -111,7 +111,7 @@ while (round < MAX_ROUNDS) {
   log(`Revising: ${needsWork.length}/${critiques.length} lenses flagged issues (round ${round})`)
   draft = await agent(
     `Revise this architecture document to address the following critique. Keep everything that already works and was not flagged.\n\nCurrent draft:\n${draft}\n\nCritique:\n${JSON.stringify(needsWork, null, 2)}`,
-    { agentType: 'architecture-writer' }
+    { agentType: 'architecture-writer', model: 'opus' }
   )
 }
 

@@ -4,10 +4,10 @@ export const meta = {
   phases: [
     { title: 'Intake', detail: 'separate what the client asked for from what they actually need' },
     { title: 'Research', detail: 'parallel fan-out: market, existing solutions, technical prior art, user evidence - with sources' },
-    { title: 'Propose', detail: 'parallel fan-out: 8 expert seats each propose independently' },
-    { title: 'Debate', detail: 'seats cross-examine and revise each other, capped rounds' },
-    { title: 'Challenge', detail: 'two outside voices judge the panel: the reductionist cuts, the devil\'s advocate argues against building - either can send the panel back' },
-    { title: 'Synthesize', detail: 'resolve everything into one coherent set of decisions, disagreements recorded not hidden' },
+    { title: 'Propose', detail: 'parallel fan-out: 8 expert seats each propose independently (opus: panel-debate judgment)' },
+    { title: 'Debate', detail: 'seats cross-examine and revise each other, capped rounds (opus: panel-debate judgment)' },
+    { title: 'Challenge', detail: 'two outside voices judge the panel: the reductionist cuts, the devil\'s advocate argues against building - either can send the panel back (opus: panel-debate judgment)' },
+    { title: 'Synthesize', detail: 'resolve everything into one coherent set of decisions, disagreements recorded not hidden (opus: panel-debate judgment)' },
     { title: 'Author', detail: 'write the client proposal and the PRD-ready seed in parallel' },
   ],
 }
@@ -336,7 +336,7 @@ const initialResults = await parallel(PANEL.map(p => () =>
   agent(
     `You are proposing (not debating yet). Put forward your position on what should be built here, from your lens only.\n\n` +
     `Requirement brief:\n${briefContext}\n\nResearch findings:\n${researchContext}`,
-    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA }
+    { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA, model: 'opus' }
   )
 ))
 
@@ -379,7 +379,7 @@ async function runDebateRound(roundLabel, extraInstruction) {
       (extraInstruction ? `${extraInstruction}\n\n` : '') +
       `Respond to the challenges against you (concede and revise where they are right, defend with reasoning where they are not), then raise your own concrete challenges against other seats where you genuinely disagree, and list anything still unresolved.\n\n` +
       `Requirement brief:\n${briefContext}\n\nResearch findings:\n${researchContext}`,
-      { agentType: p.agentType, label: `debate:${p.key}:${roundLabel}`, phase: 'Debate', schema: DEBATE_SCHEMA }
+      { agentType: p.agentType, label: `debate:${p.key}:${roundLabel}`, phase: 'Debate', schema: DEBATE_SCHEMA, model: 'opus' }
     )
   }))
 
@@ -448,11 +448,11 @@ while (outsideRound < MAX_OUTSIDE_ROUNDS) {
   const outside = await parallel([
     () => agent(
       `The panel has converged on the positions below. Cut it down to what is actually needed.\n\n${panelContext}`,
-      { agentType: 'crs-reductionist', label: `reduce:r${outsideRound}`, phase: 'Challenge', schema: CUT_SCHEMA }
+      { agentType: 'crs-reductionist', label: `reduce:r${outsideRound}`, phase: 'Challenge', schema: CUT_SCHEMA, model: 'opus' }
     ),
     () => agent(
       `The panel has converged on the positions below. Build the strongest honest case for NOT building this at all.\n\n${panelContext}`,
-      { agentType: 'crs-devils-advocate', label: `case-against:r${outsideRound}`, phase: 'Challenge', schema: CASE_AGAINST_SCHEMA }
+      { agentType: 'crs-devils-advocate', label: `case-against:r${outsideRound}`, phase: 'Challenge', schema: CASE_AGAINST_SCHEMA, model: 'opus' }
     ),
   ])
   cut = outside[0] || cut
@@ -495,7 +495,7 @@ const decisions = await agent(
   `Full debate transcript (challenges, responses, concessions, unresolved disagreements per round):\n${JSON.stringify(debateTranscript, null, 2)}\n\n` +
   `THE REDUCTIONIST'S CUT (outside voice):\n${JSON.stringify(cut, null, 2)}\n\n` +
   `THE CASE AGAINST BUILDING (outside voice):\n${JSON.stringify(caseAgainst, null, 2)}`,
-  { agentType: 'crs-synthesizer', schema: DECISIONS_SCHEMA }
+  { agentType: 'crs-synthesizer', schema: DECISIONS_SCHEMA, model: 'opus' }
 )
 log(
   `Decisions ready: ${(decisions.recommendedScope || []).length} scope item(s), ` +

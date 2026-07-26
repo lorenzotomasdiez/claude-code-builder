@@ -4,7 +4,7 @@ export const meta = {
   phases: [
     { title: 'Scope', detail: 'summarize the diff and flag risk areas for the lenses' },
     { title: 'Review', detail: 'parallel fan-out: correctness, security, performance, tests, readability lenses' },
-    { title: 'Verify', detail: 'adversarially verify each finding to kill false positives' },
+    { title: 'Verify', detail: 'adversarially verify each finding to kill false positives (opus: judgment-heavy)' },
     { title: 'Report', detail: 'rank surviving findings by severity into one report' },
   ],
 }
@@ -113,7 +113,7 @@ const verifiedByLens = await pipeline(
   (review, lens) => {
     if (!review || !review.findings || review.findings.length === 0) return []
     return parallel(review.findings.map(f => () =>
-      agent(verifyPrompt(f, lens.key), { agentType: 'code-review-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA })
+      agent(verifyPrompt(f, lens.key), { agentType: 'code-review-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'opus' })
         .then(v => ({ ...f, lens: lens.key, verdict: v }))
     ))
   }

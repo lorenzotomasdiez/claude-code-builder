@@ -5,7 +5,7 @@ export const meta = {
     { title: 'Scope', detail: 'map affected paths, known metrics, load characteristics, and instrumentation' },
     { title: 'Hypothesize', detail: 'parallel fan-out: algorithmic, I/O/database, concurrency, memory/GC, infra lenses' },
     { title: 'Evidence', detail: 'independently gather evidence for or against each hypothesis' },
-    { title: 'Report', detail: 'rank surviving issues by impact with a proposed fix and expected gain' },
+    { title: 'Report', detail: 'rank surviving issues by impact with a proposed fix and expected gain (opus: judgment-heavy)' },
   ],
 }
 
@@ -131,7 +131,7 @@ log(`${surviving.length}/${allHypotheses.length} hypotheses survived evidence-ga
 phase('Report')
 const report = await agent(
   `Synthesize these evidence-gathered performance hypotheses into one ranked report with a proposed fix and expected gain for each. If the list is empty, say so plainly.\n\nSurviving hypotheses:\n${JSON.stringify(surviving, null, 2)}`,
-  { agentType: 'perf-investigation-reporter' }
+  { agentType: 'perf-investigation-reporter', model: 'opus' }
 )
 
 return { scope, allHypotheses, surviving, report }

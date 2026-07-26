@@ -4,7 +4,7 @@ export const meta = {
   phases: [
     { title: 'Scope', detail: 'split the idea/PRD into a small set of value-sized epics' },
     { title: 'Draft Stories', detail: 'one agent per epic, independently, writing INVEST stories with acceptance criteria' },
-    { title: 'Sequence & Estimate', detail: 'single pass over all epics/stories: t-shirt estimates, dependencies, delivery sequence, risks' },
+    { title: 'Sequence & Estimate', detail: 'single pass over all epics/stories: t-shirt estimates, dependencies, delivery sequence, risks (opus: judgment-heavy)' },
     { title: 'Draft', detail: 'assemble scope + stories + sequencing into one markdown breakdown document' },
     { title: 'Critique', detail: 'parallel adversarial review: feasibility, delivery/sequencing-risk, invest-quality' },
     { title: 'Revise', detail: 'incorporate critique, re-review, repeat until clean or capped' },
@@ -135,7 +135,7 @@ log(`Stories drafted: ${totalStories} across ${storiesByEpic.length} epic(s)`)
 phase('Sequence & Estimate')
 const sequence = await agent(
   `Estimate, sequence, and flag delivery risks for this full breakdown.\n\nEpics:\n${JSON.stringify(scope.epics, null, 2)}\n\nStories by epic:\n${JSON.stringify(storiesByEpic, null, 2)}`,
-  { agentType: 'sequencing-estimator', schema: SEQUENCE_SCHEMA }
+  { agentType: 'sequencing-estimator', schema: SEQUENCE_SCHEMA, model: 'opus' }
 )
 log(`Sequencing ready: ${sequence.sequencedStories.length} stories sequenced, ${(sequence.risks || []).length} risk(s) flagged`)
 
