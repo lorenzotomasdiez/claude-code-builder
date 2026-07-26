@@ -158,6 +158,25 @@ const SCORING_SCHEMA = {
   required: ['area', 'matrix', 'winner', 'whatTheWinnerGivesUp', 'reversibility', 'confidence'],
 }
 
+// Structured-output mechanics. Appended to every schema-validated prompt: agents have
+// been observed malforming the StructuredOutput call (XML-tagged prose packed into one
+// field, arrays serialized as strings) and then, after repeated rejections, submitting
+// placeholder content just to get the call accepted. A stub that validates poisons every
+// downstream agent silently, so the instruction is explicit and the rule is "fail, never stub".
+const OUTPUT_MECHANICS = (fields) =>
+  `\n\nOUTPUT MECHANICS - read before calling StructuredOutput. Pass each schema field as a ` +
+  `separate top-level JSON property of the tool input: ${fields}. Do NOT wrap any value in ` +
+  `XML/HTML tags, do NOT serialize arrays or objects as strings, and do NOT pack several ` +
+  `fields into one. If a call is rejected for a missing or malformed property, add that ` +
+  `property as real structured data - never substitute placeholder or stub content ` +
+  `("test", "n/a", "TBD", "example") to get the call accepted. Returning a stub is a worse ` +
+  `failure than returning nothing: every agent after you would treat it as real.`
+
+// A framing that validated but says nothing is the one failure mode that wastes the whole
+// run, so it is checked explicitly rather than trusted.
+const looksLikeStub = (s) =>
+  !s || /^(test|n\/?a|tbd|todo|example|placeholder|foo|bar|lorem)\b/i.test(String(s).trim())
+
 const CRITIQUE_SCHEMA = {
   type: 'object',
   properties: {
@@ -196,13 +215,29 @@ const framing = await agent(
   `Frame the tech-stack decision for this product. The PRD is below (it may be a file path - if so, read that file).\n\n` +
   `<prd>\n${prd}\n</prd>\n\n` +
   `Stated constraints: ${constraints}\n\n` +
-  `Derive the decision areas that are genuinely open for THIS product (maximum 5), the weighted criteria for each one traced back to a driver in the PRD, and the hard constraints that disqualify candidates outright. Name no technologies.`,
-  { agentType: 'stack-framer', schema: FRAMING_SCHEMA }
+  `Derive the decision areas that are genuinely open for THIS product (maximum 5), the weighted criteria for each one traced back to a driver in the PRD, and the hard constraints that disqualify candidates outright. Name no technologies.` +
+  OUTPUT_MECHANICS('productSummary (a plain string, no markup), drivers, decisionAreas, hardConstraints, areasDeliberatelyExcluded, openQuestions'),
+  // Opus, not sonnet: this is the load-bearing step - every downstream agent inherits it.
+  { agentType: 'stack-framer', schema: FRAMING_SCHEMA, model: 'opus' }
 )
 
 const areas = (framing.decisionAreas || []).slice(0, 5)
 if (areas.length === 0) {
   throw new Error('The framer returned no decision areas - nothing to research or score.')
+}
+// Fail loudly on a degraded framing rather than burning the whole fan-out on a stub.
+if ((framing.productSummary || '').trim().length < 60 || looksLikeStub(framing.productSummary)) {
+  throw new Error(
+    `The framer returned a placeholder-looking product summary (${JSON.stringify(framing.productSummary)}) ` +
+    `- refusing to research and score a stub. Re-run; if it repeats, the PRD may not have been readable.`
+  )
+}
+const stubAreas = areas.filter(a => (a.area || '').trim().length < 4 || looksLikeStub(a.area))
+if (stubAreas.length > 0) {
+  throw new Error(
+    `The framer returned placeholder-looking decision areas (${JSON.stringify(stubAreas.map(a => a.area))}) ` +
+    `- refusing to research and score a stub.`
+  )
 }
 log(`Framed ${areas.length} decision area(s): ${areas.map(a => a.area).join(', ')}`)
 
@@ -220,16 +255,23 @@ const scored = (await pipeline(
     `Decision area: ${area.area}\nWhy it matters: ${area.whyItMatters || 'not stated'}\n\n` +
     `Criteria you must gather evidence against:\n${criteriaText(area)}\n\n` +
     `Hard constraints (a candidate violating one is disqualified, not omitted):\n${(framing.hardConstraints || []).map(c => `- ${c}`).join('\n') || '- none stated'}\n\n` +
-    `Include the boring/default option for this area on equal footing. Source every factual claim. Score nothing and recommend nothing.`,
+    `Include the boring/default option for this area on equal footing. Source every factual claim. Score nothing and recommend nothing.` +
+    OUTPUT_MECHANICS('area, candidates, unknowns, sourcesConsulted'),
     { agentType: 'stack-researcher', label: `research:${area.area}`, phase: 'Research', schema: EVIDENCE_SCHEMA }
-  ),
+  ).then(evidence => {
+    if (!evidence || !(evidence.candidates || []).length) {
+      throw new Error(`Research for "${area.area}" returned no candidates - dropping this area rather than scoring an empty matrix.`)
+    }
+    return evidence
+  }),
   (evidence, area) => agent(
     `Score this decision area's candidates against its weighted criteria. Apply the hard constraints first, then score every cell before you look at the totals.\n\n` +
     `Product: ${framing.productSummary}\n\n` +
     `Decision area: ${area.area}\n\n` +
     `Criteria and weights:\n${criteriaText(area)}\n\n` +
     `Hard constraints:\n${(framing.hardConstraints || []).map(c => `- ${c}`).join('\n') || '- none stated'}\n\n` +
-    `Evidence gathered by the researcher (this is all you get - do not add facts):\n${JSON.stringify(evidence, null, 2)}`,
+    `Evidence gathered by the researcher (this is all you get - do not add facts):\n${JSON.stringify(evidence, null, 2)}` +
+    OUTPUT_MECHANICS('area, matrix, disqualified, winner, runnerUp, margin, whatTheWinnerGivesUp, conditionsThatWouldFlipThis, reversibility, confidence, framingConcerns'),
     { agentType: 'stack-scorer', label: `score:${area.area}`, phase: 'Score', schema: SCORING_SCHEMA, model: 'opus' }
   ).then(scoring => ({ area, evidence, scoring }))
 )).filter(Boolean)
@@ -264,7 +306,8 @@ while (round < MAX_ROUNDS) {
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
       `<stack_document>\n${draft}\n</stack_document>\n\n` +
-      `Review the tech-stack decision document above through the ${lens} lens only, against that lens's checklist. Be adversarial. List every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.`,
+      `Review the tech-stack decision document above through the ${lens} lens only, against that lens's checklist. Be adversarial. List every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.` +
+      OUTPUT_MECHANICS('lens, verdict, issues'),
       { agentType: 'stack-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)

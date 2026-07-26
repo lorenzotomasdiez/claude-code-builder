@@ -215,3 +215,41 @@ proves the command -> workflow -> agent wiring and schema validation, not
 production quality. The output document
 (`docs/architecture/invoice-payment-tracker-tech-stack.md`, 416 lines, all 9
 sections present) was deleted afterward as a scratch artifact.
+
+## Hardening after a real-world failure
+
+A later run against a real PRD produced a fully-formed document about nothing.
+The cause was upstream of every agent that looked broken: `stack-framer` read the
+PRD correctly, then malformed its `StructuredOutput` call three times (it packed
+XML-tagged prose into `productSummary` instead of using the schema's separate
+fields), and on the fourth attempt submitted a stub - `productSummary: "test"`,
+one decision area named `"Test area"`, one criterion named `"test"` - purely to
+get the call accepted.
+
+That stub validated, so nothing failed. The researchers honestly reported no
+candidates, the scorers honestly reported no winner, the author wrote a document
+about its own lack of input, and the three critics spent an Opus round each
+reviewing placeholder text. Eleven agents and seven minutes, no error anywhere.
+
+Three changes, because the failure had three separable causes:
+
+1. **Explicit output mechanics on every schema-validated prompt.** The
+   `OUTPUT_MECHANICS` helper spells out that each schema field is a separate
+   top-level JSON property, that nothing may be XML-wrapped or
+   string-serialized, and - the important part - that a rejected call must be
+   fixed with real data and never with placeholder content. The same rule is in
+   `stack-framer.md` itself so it survives a caller writing their own prompt.
+2. **The framer runs on Opus.** It is the load-bearing step: it is the only
+   agent whose output every other agent inherits, and it was the cheapest agent
+   in the pipeline. That was the wrong place to save money.
+3. **Guards that fail loudly.** After framing, a short/placeholder-looking
+   `productSummary` or decision-area name throws instead of proceeding, and a
+   research step that returns zero candidates drops that area rather than handing
+   the scorer an empty matrix. A degraded run now costs one agent, not eleven,
+   and it reports the real cause instead of a document full of critique about
+   placeholder text.
+
+The general lesson, worth carrying into other workflows: schema validation
+proves an agent's output has the right *shape*, not that it has content. Any
+step whose output the entire run inherits needs a content check too, and an
+agent that can escape a validator by submitting a stub eventually will.
