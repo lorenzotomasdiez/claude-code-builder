@@ -130,7 +130,8 @@ log(`${surviving.length}/${allHypotheses.length} hypotheses survived evidence-ga
 // --- Phase 4: Report (single agent, sequential) ---
 phase('Report')
 const report = await agent(
-  `Synthesize these evidence-gathered performance hypotheses into one ranked report with a proposed fix and expected gain for each. If the list is empty, say so plainly.\n\nSurviving hypotheses:\n${JSON.stringify(surviving, null, 2)}`,
+  `<surviving_hypotheses>\n${JSON.stringify(surviving, null, 2)}\n</surviving_hypotheses>\n\n` +
+  `Synthesize the evidence-gathered hypotheses above into one ranked report with a proposed fix and expected gain for each. If the list is empty, say so plainly in a couple of sentences rather than padding the report out.`,
   { agentType: 'perf-investigation-reporter', model: 'opus' }
 )
 

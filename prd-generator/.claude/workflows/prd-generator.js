@@ -110,7 +110,8 @@ while (round < MAX_ROUNDS) {
   phase('Critique')
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
-      `Critique this PRD draft through the ${lens} lens. Be adversarial - look for gaps, unstated assumptions, and unmeasurable goals.\n\n${draft}`,
+      `<prd_draft>\n${draft}\n</prd_draft>\n\n` +
+      `Critique the PRD draft above through the ${lens} lens only. Be adversarial - look for gaps, unstated assumptions, and unmeasurable goals - and list every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.`,
       { agentType: 'prd-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)

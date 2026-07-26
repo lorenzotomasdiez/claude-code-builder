@@ -103,8 +103,11 @@ function reviewPrompt(lens) {
   return `Review this diff through the ${lens.key} lens only. Be adversarial - report only real, concrete issues.\n\nScope brief:\n${JSON.stringify(scope, null, 2)}\n\nDiff:\n${diff}`
 }
 
+// Payload first, task last: the diff is the largest block in this prompt, and the
+// instruction lands better at the end than buried above it.
 function verifyPrompt(finding, lensKey) {
-  return `Try to refute this ${lensKey} finding by re-checking it against the actual diff. Default to rejected if you cannot confirm it from the real code.\n\nFinding:\n${JSON.stringify(finding, null, 2)}\n\nDiff:\n${diff}`
+  return `<diff>\n${diff}\n</diff>\n\n<finding lens="${lensKey}">\n${JSON.stringify(finding, null, 2)}\n</finding>\n\n` +
+    `Try to refute the finding above by re-checking it against the actual diff. Default to rejected if you cannot confirm it from the real code. Report what you checked and what it showed, in a few sentences.`
 }
 
 const verifiedByLens = await pipeline(

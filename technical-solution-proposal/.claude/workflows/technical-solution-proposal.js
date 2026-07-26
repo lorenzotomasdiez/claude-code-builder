@@ -111,7 +111,8 @@ log(`Brief ready: ${brief.problem}`)
 phase('Propose')
 const initialResults = await parallel(PANEL.map(p => () =>
   agent(
-    `You are proposing (not debating yet). Propose your approach to this technical brief:\n\n${JSON.stringify(brief, null, 2)}`,
+    `<technical_brief>\n${JSON.stringify(brief, null, 2)}\n</technical_brief>\n\n` +
+    `You are proposing, not debating yet. Propose your approach to the brief above from your lens only, at the length the proposal actually needs - other seats cover the ground outside your lens, so flag it rather than designing it.`,
     { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA, model: 'opus' }
   )
 ))
@@ -144,7 +145,7 @@ for (let round = 1; round <= MAX_DEBATE_ROUNDS; round++) {
     return agent(
       `Round ${round} of debate. Here are all current proposals, including your own (lens: ${p.key}):\n\n${JSON.stringify(proposalsSnapshot, null, 2)}\n\n` +
       `Challenges other seats raised against you in the previous round (empty if none yet):\n${JSON.stringify(challengesForMe, null, 2)}\n\n` +
-      `Respond to those challenges (concede and revise, or defend with reasoning), then raise your own concrete challenges against other seats' proposals where you disagree, and list anything still unresolved.`,
+      `Respond to those challenges (concede in a sentence and revise, or defend with reasoning), then raise your own concrete challenges against other seats' proposals where you disagree, and list anything still unresolved. Raise only challenges you would defend if pressed, and leave settled points and your own unchallenged reasoning alone - re-opening them costs the panel a round.`,
       { agentType: p.agentType, label: `debate:${p.key}:r${round}`, phase: 'Debate', schema: DEBATE_SCHEMA, model: 'opus' }
     )
   }))
@@ -186,10 +187,10 @@ for (let round = 1; round <= MAX_DEBATE_ROUNDS; round++) {
 phase('Synthesize')
 const finalProposals = PANEL.filter(p => current[p.key]).map(p => ({ lens: p.key, ...current[p.key] }))
 const proposal = await agent(
-  `Synthesize this panel debate into one coherent technical solution proposal.\n\n` +
-  `Technical brief:\n${JSON.stringify(brief, null, 2)}\n\n` +
-  `Final proposals per seat:\n${JSON.stringify(finalProposals, null, 2)}\n\n` +
-  `Full debate transcript (challenges, responses, concessions, unresolved disagreements per round):\n${JSON.stringify(debateTranscript, null, 2)}`,
+  `<technical_brief>\n${JSON.stringify(brief, null, 2)}\n</technical_brief>\n\n` +
+  `<final_proposals_per_seat>\n${JSON.stringify(finalProposals, null, 2)}\n</final_proposals_per_seat>\n\n` +
+  `<debate_transcript>\n${JSON.stringify(debateTranscript, null, 2)}\n</debate_transcript>\n\n` +
+  `Synthesize the panel debate above into one coherent technical solution proposal, following the house section structure. Write only what the panel and the brief support: no new technology choices, no sections beyond the structure, and no section padded past the substance the debate actually produced.`,
   { agentType: 'tsp-synthesizer', model: 'opus' }
 )
 

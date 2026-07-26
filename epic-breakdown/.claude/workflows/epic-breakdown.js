@@ -134,7 +134,9 @@ log(`Stories drafted: ${totalStories} across ${storiesByEpic.length} epic(s)`)
 // --- Phase 3: Sequence & Estimate (single agent, sequential) ---
 phase('Sequence & Estimate')
 const sequence = await agent(
-  `Estimate, sequence, and flag delivery risks for this full breakdown.\n\nEpics:\n${JSON.stringify(scope.epics, null, 2)}\n\nStories by epic:\n${JSON.stringify(storiesByEpic, null, 2)}`,
+  `<epics>\n${JSON.stringify(scope.epics, null, 2)}\n</epics>\n\n` +
+  `<stories_by_epic>\n${JSON.stringify(storiesByEpic, null, 2)}\n</stories_by_epic>\n\n` +
+  `Estimate, sequence, and flag delivery risks across the full breakdown above. Sequence every story you were given and do not add stories or epics of your own.`,
   { agentType: 'sequencing-estimator', schema: SEQUENCE_SCHEMA, model: 'opus' }
 )
 log(`Sequencing ready: ${sequence.sequencedStories.length} stories sequenced, ${(sequence.risks || []).length} risk(s) flagged`)

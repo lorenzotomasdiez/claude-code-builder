@@ -334,8 +334,9 @@ const briefContext = JSON.stringify(brief, null, 2)
 phase('Propose')
 const initialResults = await parallel(PANEL.map(p => () =>
   agent(
-    `You are proposing (not debating yet). Put forward your position on what should be built here, from your lens only.\n\n` +
-    `Requirement brief:\n${briefContext}\n\nResearch findings:\n${researchContext}`,
+    `<requirement_brief>\n${briefContext}\n</requirement_brief>\n\n` +
+    `<research_findings>\n${researchContext}\n</research_findings>\n\n` +
+    `You are proposing, not debating yet. Put forward your position on what should be built here, from your lens only and at the length the position actually needs - seven other seats cover the ground outside your lens, so flag it rather than arguing it for them.`,
     { agentType: p.agentType, label: `propose:${p.key}`, phase: 'Propose', schema: PROPOSAL_SCHEMA, model: 'opus' }
   )
 ))
@@ -374,11 +375,13 @@ async function runDebateRound(roundLabel, extraInstruction) {
   const raw = await parallel(activeSeats.map(p => () => {
     const challengesForMe = pendingChallenges[p.key] || []
     return agent(
-      `Debate round "${roundLabel}". Here are all current positions, including your own (you are the "${p.key}" seat):\n\n${JSON.stringify(snapshot, null, 2)}\n\n` +
-      `Challenges other seats raised against you in the previous round (empty if none yet):\n${JSON.stringify(challengesForMe, null, 2)}\n\n` +
+      `<requirement_brief>\n${briefContext}\n</requirement_brief>\n\n` +
+      `<research_findings>\n${researchContext}\n</research_findings>\n\n` +
+      `<current_positions>\n${JSON.stringify(snapshot, null, 2)}\n</current_positions>\n\n` +
+      `<challenges_against_you>\n${JSON.stringify(challengesForMe, null, 2)}\n</challenges_against_you>\n\n` +
+      `Debate round "${roundLabel}". You are the "${p.key}" seat; your own position is in the positions above, and the challenges block is empty if none have been raised at you yet.\n\n` +
       (extraInstruction ? `${extraInstruction}\n\n` : '') +
-      `Respond to the challenges against you (concede and revise where they are right, defend with reasoning where they are not), then raise your own concrete challenges against other seats where you genuinely disagree, and list anything still unresolved.\n\n` +
-      `Requirement brief:\n${briefContext}\n\nResearch findings:\n${researchContext}`,
+      `Respond to the challenges against you (concede in a sentence and revise where they are right, defend with reasoning where they are not), then raise your own concrete challenges against other seats where you genuinely disagree, and list anything still unresolved. Raise only challenges you would defend if pressed, and leave settled points and your own unchallenged reasoning alone - re-opening them costs the panel a round.`,
       { agentType: p.agentType, label: `debate:${p.key}:${roundLabel}`, phase: 'Debate', schema: DEBATE_SCHEMA, model: 'opus' }
     )
   }))
@@ -439,19 +442,20 @@ while (outsideRound < MAX_OUTSIDE_ROUNDS) {
   phase('Challenge')
 
   const panelPositions = PANEL.filter(p => current[p.key]).map(p => ({ lens: p.key, ...current[p.key] }))
+  // Payload first, task last - the transcript is by far the largest block here.
   const panelContext =
-    `Requirement brief:\n${briefContext}\n\n` +
-    `Research findings:\n${researchContext}\n\n` +
-    `The panel's current positions (8 expert seats):\n${JSON.stringify(panelPositions, null, 2)}\n\n` +
-    `Full debate transcript:\n${JSON.stringify(debateTranscript, null, 2)}`
+    `<requirement_brief>\n${briefContext}\n</requirement_brief>\n\n` +
+    `<research_findings>\n${researchContext}\n</research_findings>\n\n` +
+    `<panel_positions seats="8">\n${JSON.stringify(panelPositions, null, 2)}\n</panel_positions>\n\n` +
+    `<debate_transcript>\n${JSON.stringify(debateTranscript, null, 2)}\n</debate_transcript>`
 
   const outside = await parallel([
     () => agent(
-      `The panel has converged on the positions below. Cut it down to what is actually needed.\n\n${panelContext}`,
+      `${panelContext}\n\nThe panel has converged on the positions above. Cut it down to what is actually needed. Judge the scope you were given - do not propose features of your own, and keep each cut to the one line that justifies it.`,
       { agentType: 'crs-reductionist', label: `reduce:r${outsideRound}`, phase: 'Challenge', schema: CUT_SCHEMA, model: 'opus' }
     ),
     () => agent(
-      `The panel has converged on the positions below. Build the strongest honest case for NOT building this at all.\n\n${panelContext}`,
+      `${panelContext}\n\nThe panel has converged on the positions above. Build the strongest honest case for NOT building this at all. Rank the objections so the one that matters is not diluted, and say plainly if the case against turns out to be weak.`,
       { agentType: 'crs-devils-advocate', label: `case-against:r${outsideRound}`, phase: 'Challenge', schema: CASE_AGAINST_SCHEMA, model: 'opus' }
     ),
   ])
@@ -488,13 +492,13 @@ while (outsideRound < MAX_OUTSIDE_ROUNDS) {
 phase('Synthesize')
 const finalPositions = PANEL.filter(p => current[p.key]).map(p => ({ lens: p.key, ...current[p.key] }))
 const decisions = await agent(
-  `Resolve this ten-expert engagement into one coherent set of decisions. Decide - do not average. Record every disagreement the panel did not settle.\n\n` +
-  `Requirement brief:\n${briefContext}\n\n` +
-  `Research findings:\n${researchContext}\n\n` +
-  `Final positions from the 8 panel seats:\n${JSON.stringify(finalPositions, null, 2)}\n\n` +
-  `Full debate transcript (challenges, responses, concessions, unresolved disagreements per round):\n${JSON.stringify(debateTranscript, null, 2)}\n\n` +
-  `THE REDUCTIONIST'S CUT (outside voice):\n${JSON.stringify(cut, null, 2)}\n\n` +
-  `THE CASE AGAINST BUILDING (outside voice):\n${JSON.stringify(caseAgainst, null, 2)}`,
+  `<requirement_brief>\n${briefContext}\n</requirement_brief>\n\n` +
+  `<research_findings>\n${researchContext}\n</research_findings>\n\n` +
+  `<final_positions seats="8">\n${JSON.stringify(finalPositions, null, 2)}\n</final_positions>\n\n` +
+  `<debate_transcript>\n${JSON.stringify(debateTranscript, null, 2)}\n</debate_transcript>\n\n` +
+  `<reductionists_cut outside_voice="true">\n${JSON.stringify(cut, null, 2)}\n</reductionists_cut>\n\n` +
+  `<case_against_building outside_voice="true">\n${JSON.stringify(caseAgainst, null, 2)}\n</case_against_building>\n\n` +
+  `Resolve the ten-expert engagement above into one coherent set of decisions. Decide - do not average - and record every disagreement the panel did not settle. Take a position on every item the reductionist cut, and keep the devil's advocate's verdict visible rather than buried. Decide only what the panel and the research support: no late positions nobody got to challenge.`,
   { agentType: 'crs-synthesizer', schema: DECISIONS_SCHEMA, model: 'opus' }
 )
 log(

@@ -140,7 +140,9 @@ log(`${hypotheses.length} hypothesis/es gathered`)
 // --- Phase 3: Converge (single agent, sequential) ---
 phase('Converge')
 const convergence = await agent(
-  `Converge on the single real root cause for this bug from the competing hypotheses below, verifying against the code directly rather than trusting self-reported confidence.\n\nConfirmed repro:\n${JSON.stringify(repro, null, 2)}\n\nHypotheses:\n${JSON.stringify(hypotheses, null, 2)}`,
+  `<confirmed_repro>\n${JSON.stringify(repro, null, 2)}\n</confirmed_repro>\n\n` +
+  `<competing_hypotheses>\n${JSON.stringify(hypotheses, null, 2)}\n</competing_hypotheses>\n\n` +
+  `Converge on the single real root cause from the competing hypotheses above. Verify the specific claims you doubt against the code directly rather than trusting self-reported confidence, then commit to one cause and one fix direction.`,
   { agentType: 'bug-hunter-converger', schema: CONVERGENCE_SCHEMA, model: 'opus' }
 )
 log(`Root cause: ${convergence.rootCause} (${convergence.location})`)

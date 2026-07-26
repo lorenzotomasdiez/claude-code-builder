@@ -75,7 +75,8 @@ log(`Brief ready. Top characteristic: ${brief.drivingCharacteristics[0]?.name}`)
 // --- Phase 2: Draft (single agent, sequential) ---
 phase('Draft')
 let draft = await agent(
-  `Write the full architecture document set from this brief, following the house structure exactly. Date to use for "Last updated": ${date}.\n\nBrief:\n${JSON.stringify(brief, null, 2)}`,
+  `<brief>\n${JSON.stringify(brief, null, 2)}\n</brief>\n\n` +
+  `Write the full architecture document set from the brief above, following the house structure exactly. Date to use for "Last updated": ${date}. Design what the brief asks for at the scope it states - where a detail is missing, use a clearly marked placeholder or labeled assumption rather than expanding the design to cover it.`,
   { agentType: 'architecture-writer', model: 'opus' }
 )
 
@@ -89,7 +90,8 @@ while (round < MAX_ROUNDS) {
   phase('Critique')
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
-      `Critique this architecture document draft through the ${lens} lens. Be adversarial - look for hidden trade-offs, weak ADRs, and unoperable designs.\n\n${draft}`,
+      `<architecture_draft>\n${draft}\n</architecture_draft>\n\n` +
+      `Critique the architecture document above through the ${lens} lens only. Be adversarial - look for hidden trade-offs, weak ADRs, and unoperable designs - and list every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.`,
       { agentType: 'architecture-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)
@@ -110,7 +112,9 @@ while (round < MAX_ROUNDS) {
   phase('Revise')
   log(`Revising: ${needsWork.length}/${critiques.length} lenses flagged issues (round ${round})`)
   draft = await agent(
-    `Revise this architecture document to address the following critique. Keep everything that already works and was not flagged.\n\nCurrent draft:\n${draft}\n\nCritique:\n${JSON.stringify(needsWork, null, 2)}`,
+    `<current_draft>\n${draft}\n</current_draft>\n\n` +
+    `<critique>\n${JSON.stringify(needsWork, null, 2)}\n</critique>\n\n` +
+    `Revise the document above to address every issue in the critique. Keep everything that already works and was not flagged, and change nothing the critique did not raise - this is a revision pass, not a rewrite.`,
     { agentType: 'architecture-writer', model: 'opus' }
   )
 }

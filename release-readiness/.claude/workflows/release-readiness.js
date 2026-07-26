@@ -88,7 +88,9 @@ log(`${gates.length}/${GATES.length} gates reported, ${blockingGates.length} blo
 // --- Phase 3: Report (single agent, sequential) ---
 phase('Report')
 const report = await agent(
-  `Synthesize these five independent release-gate verdicts into one go/no-go release readiness report. Rule: any gate with blocking=true means the overall verdict is no-go, no exceptions.\n\nRelease brief:\n${JSON.stringify(scope, null, 2)}\n\nGate verdicts:\n${JSON.stringify(gates, null, 2)}`,
+  `<release_brief>\n${JSON.stringify(scope, null, 2)}\n</release_brief>\n\n` +
+  `<gate_verdicts>\n${JSON.stringify(gates, null, 2)}\n</gate_verdicts>\n\n` +
+  `Synthesize the five independent gate verdicts above into one go/no-go release readiness report. Rule: any gate with blocking=true means the overall verdict is no-go, no exceptions. Report the five gates you were given and do not introduce a sixth check.`,
   { agentType: 'release-readiness-reporter', model: 'opus' }
 )
 

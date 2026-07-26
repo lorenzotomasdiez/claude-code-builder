@@ -106,8 +106,11 @@ function auditPrompt(lens) {
   return `Audit this target through the ${lens.key} lens only. This is an authorized defensive security audit - be adversarial, but report only real, concrete, reachable issues.\n\nScope brief:\n${JSON.stringify(scope, null, 2)}\n\nTarget:\n${target}`
 }
 
+// Payload first, task last: the target is the largest block in this prompt, and the
+// instruction lands better at the end than buried above it.
 function verifyPrompt(finding, lensKey) {
-  return `Try to refute this ${lensKey} finding by re-checking it against the actual target. Default to rejected if you cannot confirm it from the real code.\n\nFinding:\n${JSON.stringify(finding, null, 2)}\n\nTarget:\n${target}`
+  return `<target>\n${target}\n</target>\n\n<finding lens="${lensKey}">\n${JSON.stringify(finding, null, 2)}\n</finding>\n\n` +
+    `Try to refute the finding above by re-checking it against the actual target. Default to rejected if you cannot confirm it from the real code. Report what you checked and what it showed, in a few sentences.`
 }
 
 const verifiedByLens = await pipeline(

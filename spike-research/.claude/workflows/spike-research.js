@@ -128,7 +128,9 @@ log(`${allVerified.length}/${LENSES.length} lenses returned verified findings ($
 // --- Phase 4: Synthesize (single agent, sequential) ---
 phase('Synthesize')
 const report = await agent(
-  `Synthesize these verified research findings into an options matrix and a recommendation with a stated confidence level. If the evidence base is too thin, say so plainly.\n\nBrief:\n${JSON.stringify(brief, null, 2)}\n\nVerified findings by lens:\n${JSON.stringify(allVerified, null, 2)}`,
+  `<brief>\n${JSON.stringify(brief, null, 2)}\n</brief>\n\n` +
+  `<verified_findings_by_lens>\n${JSON.stringify(allVerified, null, 2)}\n</verified_findings_by_lens>\n\n` +
+  `Synthesize the verified findings above into an options matrix and a recommendation with a stated confidence level. If the evidence base is too thin to recommend responsibly, say so plainly instead of writing a confident-sounding report around thin evidence.`,
   { agentType: 'spike-research-synthesizer', model: 'opus' }
 )
 
