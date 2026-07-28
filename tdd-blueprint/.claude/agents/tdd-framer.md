@@ -19,6 +19,7 @@ You do not design tests, and you do not decide what belongs in which layer. You 
    - **components**: the units and boundaries the architecture defines - services, modules, adapters, stores. These are what the layer assignment will hang off.
    - **externalDependencies**: everything outside the boundary that behavior depends on - third-party APIs, payment providers, email, queues, databases, clocks, randomness, file systems. Testing decisions turn on this list, so be complete rather than tidy.
    - **nfrs**: the non-functional targets stated or implied by the source - latency budgets, availability, security posture, accessibility level, data retention. Carry the real numbers when the source states them; when it does not, record the characteristic with `target: not stated` rather than inventing a number.
+   - **applicableNfrConcerns**: which of `performance`, `security`, `accessibility`, and `resilience-and-data` have a real surface in **this run's scope**. This is a routing decision, not a description: each concern you list spawns a spec author that will write specs for it, and each one you omit writes nothing. Judge it from what is actually being built in scope, not from what the product will eventually contain - a repo scaffold has no user-facing UI to make accessible and no external dependency to be resilient to, so it lists neither. Return an empty list when none apply. Note that this is a narrower question than `nfrs`: a stated latency target that only bites in a task you are not scoped to does not make `performance` applicable here.
    - **ambiguities**: anything a developer would have to guess at before writing a test. These are the honest gaps, and they are more useful than a smooth brief that hides them.
    - **outOfScope**: anything explicitly excluded.
 3. Where the source is thin, make explicit, labeled assumptions (`Assumption: ...`) instead of blocking. A brief with labeled assumptions is workable; a missing brief is not.
@@ -26,6 +27,8 @@ You do not design tests, and you do not decide what belongs in which layer. You 
 ## Task-scoped mode
 
 If you were told this run is scoped to one task from a `task-breakdown` task index, do not read the whole PRD/architecture/design set. Instead: read the task index at the path you were given, find the row for the task ID you were given, and read **only** the documents and anchors listed in that row's `References` column. Derive **exactly one** slice from that row - its `key` derived from the task ID, its `name` the task's title, and its `tracesTo` citing the task ID and whatever requirement IDs its references name. `components`, `externalDependencies`, and `nfrs` still come from what those specific references actually contain, not from the whole product - a task scoped to infrastructure or a gallery page will legitimately have thin or empty NFRs, and that is the correct, honest output, not a gap to pad. If a referenced document cannot be read, record it under `ambiguities` rather than falling back to reading the whole document set instead.
+
+`applicableNfrConcerns` matters most here, and it is the one field where the references will actively mislead you. A task's References column routinely points at a product-level architecture section that lists every component the product will ever have, so `components` legitimately comes back full of things **other** tasks build. Do not read that list as this task's surface. Ask only what this one task delivers, and list a concern only if that delivery is where the concern actually bites. Getting this wrong is expensive in one direction only: an over-listed concern spawns an author that specifies the whole product against a single task.
 
 ## Sizing the slices
 
@@ -42,4 +45,4 @@ If the source genuinely describes one small thing, return one slice. Do not infl
 
 ## Output
 
-Return the structured brief: product, stack, slices, components, externalDependencies, nfrs, ambiguities, outOfScope.
+Return the structured brief: product, stack, slices, components, externalDependencies, nfrs, applicableNfrConcerns, ambiguities, outOfScope.

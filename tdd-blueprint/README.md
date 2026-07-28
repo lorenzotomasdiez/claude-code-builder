@@ -42,7 +42,7 @@ It also runs from nothing but a sentence describing what is being built - the fr
 ```
 Frame (1 agent)
   -> Strategy (1 agent, opus)
-    -> Specify (parallel fan-out: 1 agent per behavior slice + 1 per NFR concern)
+    -> Specify (parallel fan-out: 1 agent per behavior slice + 1 per IN-SCOPE NFR concern)
       -> Critique (3 agents in parallel over the WHOLE spec set, opus:
                    coverage-completeness, testability-determinism, tdd-usability)
         -> Revise (1 agent per flagged group, in parallel, + 1 coverage-gap sweep)
@@ -52,6 +52,20 @@ Frame (1 agent)
 ```
 
 The critique uses the "needs_revision if any lens flags it" rule from `prd-generator`: two satisfied lenses do not buy an early exit.
+
+### Why the NFR fan-out is conditional
+
+The four cross-cutting concerns do not fan out unconditionally - `tdd-framer` returns `applicableNfrConcerns`, and only the concerns it lists get a spec author. This exists because of a real failure in the first task-scoped runs.
+
+A task's `References` column points at product-level architecture sections, so in task-scoped mode the brief's `components` list legitimately contains every component the *product* will ever have, not the handful the *task* builds. An NFR author told to cover "every entry point and surface in the brief" then specifies the whole product against one task. In the T0/T1/T2 runs on `workflows-folder-test`, 138 of 156 NFR specs traced to components other tasks build: T0 ("repo & infra scaffold") got 26 accessibility specs for an editor surface and AI trigger it does not build, and 42 resilience specs for an AI Gateway that does not exist yet. The functional specs were correctly scoped in all three runs - 112 of 112 traced to their task - so the defect was entirely in the cross-cutting half.
+
+Three things had to change together, because each one alone gets undone by the other two:
+
+1. **The fan-out is gated on scope** (`tdd-blueprint.js`). The framer is the only agent that read the task row, so it is the only one that can tell a scaffold task from a UI task. A concern with no surface spawns no author at all, which is strictly cheaper than spawning one and asking it to return nothing.
+2. **A `<scope_boundary>` travels with the brief** to every downstream agent, saying explicitly that the brief's product-level lists are context rather than a coverage target. It rides on `briefContext`, so spec authors, critics, revisers, the coverage sweep, the sequencer, and the document authors all get it from one insertion point.
+3. **The coverage lens cuts both ways** (`tdd-critic.md`). It used to be a one-way ratchet - "every component in the brief has coverage at some layer" actively *demanded* the out-of-scope specs, and its only scope guard fired on specs that trace to nothing, which these did not (they traced to real components). It now flags a spec whose `tracesTo` names another task's work and routes it for deletion.
+
+The test for an in-scope spec is red-then-green: if a developer could not make it pass by completing this task alone, it will sit red for a reason the task cannot fix, and it belongs in the blueprint of the task that builds the thing.
 
 ## What it produces
 
@@ -69,7 +83,7 @@ Six documents under `docs/testing/<slug>/`:
 - `.claude/agents/tdd-framer.md` - reads the upstream documents and produces the testable-surface brief: behavior slices sized to about a day of red-green work, components, external dependencies, non-functional targets, and the honest ambiguities. Designs nothing.
 - `.claude/agents/tdd-strategist.md` - the QA architect. Decides the suite shape, the layer boundaries (including what does *not* belong in each), the test-double policy dependency by dependency, environments, CI gates, and exit criteria. Writes no individual specs.
 - `.claude/agents/tdd-spec-author.md` - writes the Given/When/Then specs for one functional slice, handles its revision passes, and runs the coverage-gap sweep. Writes no test code.
-- `.claude/agents/tdd-nfr-spec-author.md` - writes the specs for exactly one cross-cutting concern (performance, security, accessibility, or resilience-and-data) across the whole product.
+- `.claude/agents/tdd-nfr-spec-author.md` - writes the specs for exactly one cross-cutting concern (performance, security, accessibility, or resilience-and-data) across whatever the run is scoped to: the whole product, or a single task.
 - `.claude/agents/tdd-critic.md` - adversarially reviews the whole spec set through exactly one lens against a fixed checklist, and routes each issue to the group that owns the fix.
 - `.claude/agents/tdd-sequencer.md` - decides the red-green build order and produces the traceability matrix. Adds no specs.
 - `.claude/agents/tdd-doc-author.md` - writes one of the six documents. Re-decides nothing.
@@ -97,6 +111,8 @@ Six documents under `docs/testing/<slug>/`:
 ## Smoke test
 
 **Post-smoke-test changes, not yet re-verified.** After the PASS run below, `tdd-doc-author` was changed from returning full document text to writing each document to disk itself and returning `{path, charCount, version}`; the spec inventory that used to be pasted into every one of 3 parallel critics' prompts on every round (and into all 6 parallel authors' prompts) is now written once per round to a scratch file (`tdd-scratch-writer`) and read from disk instead; `openIssues` is now capped at 15 with `openIssuesTotal`; and the final return is a compact summary instead of the full brief/specs/critiques/plan/documents. The pipeline shape, phase order, and round-cap behavior described below are unchanged and still evidenced by this run - the write/reference behavior and the new return shape are not.
+
+Also fixed since that run, and the more consequential change: the NFR fan-out is now gated on `brief.applicableNfrConcerns` rather than always spawning all four concerns, a `<scope_boundary>` rides along with `briefContext` in task-scoped runs, and `tdd-critic`'s coverage lens now flags out-of-scope specs instead of only under-coverage. See "Why the NFR fan-out is conditional" above for the evidence that forced this. Note that the smoke test below is a **whole-target** run, so it never exercised the path that broke - it reports "5 slices + 4 NFR concerns", which is still the correct behavior for a whole-product run where all four concerns genuinely apply. The task-scoped path is what changed, and it is not yet re-verified end to end.
 
 Also fixed since that run: in task-scoped mode, `docs/testing/<slug>/<taskId>/` now takes `<slug>` from the task index's own parent folder (`docs/tasks/<slug>/tasks.md`) instead of re-slugifying the framer's `brief.product` sentence - the same mismatch `design-system-foundation-v2` and `task-breakdown` had, which drifted from `docs/product-specs/`'s naming. Whole-target mode is unaffected (it still slugifies `brief.product`, same as before, since there is no task index to key off). Not yet re-verified end to end.
 

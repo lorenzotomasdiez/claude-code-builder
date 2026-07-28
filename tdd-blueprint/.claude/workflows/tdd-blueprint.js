@@ -54,10 +54,17 @@ const BRIEF_SCHEMA = {
         required: ['characteristic'],
       },
     },
+    // Which cross-cutting concerns actually have a surface in THIS run's scope. The framer is the
+    // only agent that read the task row, so it is the only one that can tell a scaffold task
+    // (no user-facing surface, so no accessibility) from a UI task. Drives the NFR fan-out below.
+    applicableNfrConcerns: {
+      type: 'array',
+      items: { type: 'string', enum: ['performance', 'security', 'accessibility', 'resilience-and-data'] },
+    },
     ambiguities: { type: 'array', items: { type: 'string' } },
     outOfScope: { type: 'array', items: { type: 'string' } },
   },
-  required: ['product', 'slices'],
+  required: ['product', 'slices', 'applicableNfrConcerns'],
 }
 
 const STRATEGY_SCHEMA = {
@@ -272,13 +279,33 @@ phase('Frame')
 const brief = await agent(
   `Turn the upstream product documents below into a testable-surface brief. Each entry is either document text or a path you should read.\n\n` +
   sources.map(s => `<source label="${s.label}">\n${s.content}\n</source>`).join('\n\n') +
-  `\n\nWhere the sources are thin, make explicit labeled assumptions and record what is genuinely ambiguous rather than blocking.`,
+  `\n\nWhere the sources are thin, make explicit labeled assumptions and record what is genuinely ambiguous rather than blocking.` +
+  `\n\nAlso decide "applicableNfrConcerns": which of performance, security, accessibility, and resilience-and-data have a real surface in THIS run's scope, judged from what is actually being built here rather than from what the product will eventually contain. Each concern you list spawns a spec author for it; each one you omit writes nothing. Omit a concern with no surface - a repo scaffold has no user-facing UI to make accessible and no dependency to be resilient to - and return an empty list if none apply. Under-listing is cheap to fix in review; over-listing pads the blueprint with specs for components this scope never builds.`,
   { agentType: 'tdd-framer', schema: BRIEF_SCHEMA }
 )
 if (!brief.slices || !brief.slices.length) {
   throw new Error('The framer found no behavior slices to specify - the input does not describe anything testable yet. Run /prd-generator or /design-blueprint first, or pass a fuller description.')
 }
 log(`Brief ready: ${brief.product} - ${brief.slices.length} slice(s), ${(brief.externalDependencies || []).length} external dependency(ies), ${(brief.ambiguities || []).length} ambiguity(ies)`)
+
+// Only the concerns the framer found a real surface for fan out. An unconditional four-way NFR
+// fan-out is what turns a task-scoped run into a whole-product one: a task's References column
+// points at product-level architecture sections, so the brief legitimately carries every component
+// the product will ever have, and an NFR author told to cover "every surface in the brief" will
+// specify all of them against a single task.
+const declaredConcerns = brief.applicableNfrConcerns || []
+const activeNfrConcerns = NFR_CONCERNS.filter(c => declaredConcerns.includes(c.label))
+const skippedConcerns = NFR_CONCERNS.filter(c => !declaredConcerns.includes(c.label))
+if (skippedConcerns.length) {
+  log(`NFR concerns in scope: ${activeNfrConcerns.map(c => c.label).join(', ') || 'none'} - skipping ${skippedConcerns.map(c => c.label).join(', ')} (no surface in this scope)`)
+}
+
+// A scope boundary travels with the brief to every downstream agent - spec authors, critics,
+// revisers, the coverage sweep, the sequencer, and the document authors - because every one of
+// them otherwise reads the brief's product-level lists as a coverage target.
+const scopeBoundary = taskScoped
+  ? `\n\n<scope_boundary>\nThis run is scoped to exactly one task: ${taskId} from ${tasksPath}. Its only deliverable is the single slice in the brief.\n\nThe brief's components, externalDependencies, and nfrs are drawn from product-level documents that the task's References column points at. They are context for understanding what this task fits into - they are NOT the scope. Other tasks build them.\n\nA spec belongs in this blueprint only if it tests something ${taskId} itself builds, and every spec must trace to ${taskId}. A spec about a component this task does not build is a defect even when the component is real and the spec is well written: it cannot go red-then-green in this task, so it makes the suite fail for reasons this task cannot fix.\n</scope_boundary>`
+  : ''
 
 // --- Phase 2: Strategy (single agent, sequential, opus) ---
 phase('Strategy')
@@ -292,7 +319,13 @@ log(`Strategy ready: ${strategy.shape} - ${strategy.layers.length} layer(s), ${s
 // --- Phase 3: Specify (parallel fan-out: one agent per slice, one per NFR concern) ---
 phase('Specify')
 const strategyContext = `<test_strategy>\n${JSON.stringify(strategy, null, 2)}\n</test_strategy>`
-const briefContext = `<testable_surface_brief>\n${JSON.stringify(brief, null, 2)}\n</testable_surface_brief>`
+const briefContext = `<testable_surface_brief>\n${JSON.stringify(brief, null, 2)}\n</testable_surface_brief>${scopeBoundary}`
+
+// Told to every NFR author, and repeated on their revision pass so a critique issue phrased as
+// "this is not covered" cannot walk the set back out of scope.
+const nfrScopeClause = taskScoped
+  ? `Cover your concern across the surface ${taskId} actually builds, and nothing else. Components the brief describes but this task does not build are out of scope no matter how clearly the brief describes them. Every spec must trace to ${taskId}. If your concern has no real surface in this task, return an empty spec list - that is the correct, honest answer, not a gap to pad.`
+  : `Cover your concern systematically across every entry point and surface in the brief, and stay out of the functional slices' territory.`
 
 const GROUPS = [
   ...brief.slices.map(s => ({
@@ -301,7 +334,7 @@ const GROUPS = [
     agentType: 'tdd-spec-author',
     slice: s,
   })),
-  ...NFR_CONCERNS.map(c => ({
+  ...activeNfrConcerns.map(c => ({
     key: `nfr:${c.key}`,
     kind: 'nfr',
     agentType: 'tdd-nfr-spec-author',
@@ -317,8 +350,8 @@ const initialSets = await parallel(GROUPS.map(g => () =>
     (g.kind === 'functional'
       ? `Write the behavior specs for exactly one slice: ${JSON.stringify(g.slice, null, 2)}\n\n` +
         `Use the ID namespace SPEC-${g.slice.key.toUpperCase()}-NN. Cover the happy path, the alternative paths, the error and unauthorized paths, and the boundaries this slice actually has - and stop there.`
-      : `Write the specs for exactly one cross-cutting concern across the whole product: ${g.concern}.\n\n` +
-        `Use the ID namespace SPEC-${g.key.split(':')[1].toUpperCase()}-NN. Cover your concern systematically across every entry point and surface in the brief, and stay out of the functional slices' territory.`) +
+      : `Write the specs for exactly one cross-cutting concern${taskScoped ? '' : ' across the whole product'}: ${g.concern}.\n\n` +
+        `Use the ID namespace SPEC-${g.key.split(':')[1].toUpperCase()}-NN. ${nfrScopeClause}`) +
     `\n\nReturn "${g.key}" as your group. Follow the strategy's layer names and test-double policy exactly.`,
     { agentType: g.agentType, label: `specify:${g.key}`, phase: 'Specify', schema: SPEC_SET_SCHEMA }
   )
@@ -414,7 +447,8 @@ while (round < MAX_ROUNDS) {
       `${briefContext}\n\n${strategyContext}\n\n` +
       `<your_current_specs group="${g.key}">\n${JSON.stringify(specSets[g.key].specs, null, 2)}\n</your_current_specs>\n\n` +
       `<critique_issues>\n${JSON.stringify(byGroup[g.key], null, 2)}\n</critique_issues>\n\n` +
-      `Revise your spec set to address every issue above. Keep the specs that were not flagged, keep surviving IDs stable, and continue the numbering rather than reusing retired numbers. Return "${g.key}" as your group and the complete revised set, not just the changes.`,
+      `Revise your spec set to address every issue above. Keep the specs that were not flagged, keep surviving IDs stable, and continue the numbering rather than reusing retired numbers. An issue that says a spec is out of scope is addressed by deleting that spec, not by rewording it. Return "${g.key}" as your group and the complete revised set, not just the changes.` +
+      (g.kind === 'nfr' ? `\n\n${nfrScopeClause}` : ''),
       { agentType: g.agentType, label: `revise:${g.key}`, phase: 'Revise', schema: SPEC_SET_SCHEMA }
     )
   ))
@@ -431,7 +465,7 @@ while (round < MAX_ROUNDS) {
       `<existing_spec_inventory>\n${JSON.stringify(inventory, null, 2)}\n</existing_spec_inventory>\n\n` +
       `<coverage_gaps>\n${JSON.stringify(unowned, null, 2)}\n</coverage_gaps>\n\n` +
       `<groups>\n${GROUPS.map(g => g.key).join('\n')}\n</groups>\n\n` +
-      `Run a coverage-gap sweep: write ONLY the specs missing to close the gaps above, in the right slice's ID namespace and continuing that namespace's numbering. Set each spec's "group" field to the group key it belongs to. Do not duplicate or restate anything already in the inventory. Return "sweep" as your group.`,
+      `Run a coverage-gap sweep: write ONLY the specs missing to close the gaps above, in the right slice's ID namespace and continuing that namespace's numbering. Set each spec's "group" field to the group key it belongs to. Do not duplicate or restate anything already in the inventory. Write nothing for a gap that falls outside this blueprint's scope - closing an out-of-scope gap is worse than leaving it open, since it belongs to a task that has its own blueprint. Return "sweep" as your group.`,
       { agentType: 'tdd-spec-author', label: `revise:coverage-sweep`, phase: 'Revise', schema: SPEC_SET_SCHEMA }
     )
     const added = (sweep && sweep.specs) || []
