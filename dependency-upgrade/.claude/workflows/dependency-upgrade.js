@@ -112,6 +112,12 @@ const [breaking, security] = await parallel([
     { agentType: 'dependency-upgrade-security-advisor', label: 'assess:security', phase: 'Assess', schema: SECURITY_SCHEMA }
   ),
 ])
+if (!breaking || !security) {
+  throw new Error(
+    `Assess phase failed: ${!breaking ? 'breaking-change analyst' : 'security advisor'} returned no result ` +
+    '(subagent error or terminal API failure) - cannot plan a safe migration without both lenses.'
+  )
+}
 log(`Assessment complete: breaking-change risk=${breaking.riskLevel}, security=${security.recommendation} (urgency ${security.urgency})`)
 
 // Migration plan runs after the two lenses so it can sequence around the real breakage and advisories.
