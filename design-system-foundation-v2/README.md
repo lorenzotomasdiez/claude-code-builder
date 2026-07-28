@@ -2,7 +2,7 @@
 
 Turns `design-blueprint` output (or a plain product description) into a **stack-agnostic design system** - UX principles, design tokens, component contracts, usage rules, and an implementation contract - plus two documents `design-system-foundation` does not produce: a **component map** (where every component actually lives and what it is built from) and a **gallery plan** (the spec for the one page, built before any feature, that renders every component in isolation).
 
-This is a sibling of `design-system-foundation/`, not a replacement.
+This is a sibling of `archive/design-system-foundation/`, not a replacement.
 That package is left untouched.
 This one exists to fix its context-bloat pattern and to answer a question the original never asked: once the PRD, the tech stack, and the architecture are decided, what do development and testing actually need in hand before the first component gets built?
 

@@ -1,4 +1,4 @@
-# claude-workflows
+# claude-code-builder
 
 This repo is a library of reusable Claude Code workflows for building and maintaining products from scratch.
 Each workflow is a self-contained, runnable package that orchestrates specialized subagents to do one recurring product or engineering task (reviewing a diff, taking a ticket to a PR, hunting a bug, proposing a technical solution from a PRD, running a security audit, generating a status report, and so on).
@@ -7,7 +7,7 @@ The goal is a family of workflows a product team can reuse and maintain, each in
 
 ## The canonical template
 
-`prd-generator/` is the reference implementation.
+`archive/prd-generator/` is the reference implementation.
 Every workflow you build MUST match its anatomy and its quality bar.
 Read it in full before building anything, and treat any deviation as a mistake unless a workflow genuinely needs a different shape.
 
@@ -15,10 +15,14 @@ Read it in full before building anything, and treat any deviation as a mistake u
 
 Each workflow lives in its own top-level directory named after the workflow (kebab-case), and contains:
 
-- `.claude/agents/*.md` - one subagent per role, each with a narrow job and an explicit "what you do not do" section. Mirror the separation of concerns in `prd-generator/.claude/agents/`.
-- `.claude/workflows/<name>.js` - the orchestration script. Real control flow, not a linear list: fan out with `parallel()`, pipeline with `pipeline()`, loop review/revise pairs with a round cap, and validate structured agent output with JSON schemas. Follow the shape and conventions of `prd-generator/.claude/workflows/prd-generator.js`. Always normalize `args` at the top: this environment can deliver the Workflow `args` as a JSON-encoded string, so parse it back to an object when `typeof args === 'string'` and it parses to an object, while keeping a genuine plain-string arg as-is. Copy the `let input = args; if (typeof input === 'string') { try { ... } }` block from `prd-generator.js` and read fields off `input`, not `args`.
+- `.claude/agents/*.md` - one subagent per role, each with a narrow job and an explicit "what you do not do" section. Mirror the separation of concerns in `archive/prd-generator/.claude/agents/`.
+- `.claude/workflows/<name>.js` - the orchestration script. Real control flow, not a linear list: fan out with `parallel()`, pipeline with `pipeline()`, loop review/revise pairs with a round cap, and validate structured agent output with JSON schemas. Follow the shape and conventions of `archive/prd-generator/.claude/workflows/prd-generator.js`. Always normalize `args` at the top: this environment can deliver the Workflow `args` as a JSON-encoded string, so parse it back to an object when `typeof args === 'string'` and it parses to an object, while keeping a genuine plain-string arg as-is. Copy the `let input = args; if (typeof input === 'string') { try { ... } }` block from `prd-generator.js` and read fields off `input`, not `args`.
 - `.claude/commands/<name>.md` - the `/<name>` entry point that runs the workflow and writes its output to a sensible location under the repo.
-- `README.md` - explains the pipeline as a diagram, the design rationale (why parallel here, why a critique loop there), the files, and usage. Match the depth of `prd-generator/README.md`.
+- `README.md` - explains the pipeline as a diagram, the design rationale (why parallel here, why a critique loop there), the files, and usage. Match the depth of `archive/prd-generator/README.md`.
+
+### The archive
+
+`archive/` holds workflows that are fully built and anatomy-clean but not (yet, or no longer) part of the library's flagship set: superseded v1s (`prd-generator`, `design-system-foundation`), and standalone packages not wired into the greenfield pipeline that still have an open smoke-test caveat or no real run at all. See `archive/README.md` for the exact criteria and `STATUS.md` for per-package state. New workflows are built at the repo root; only move a package to `archive/` if it is superseded or genuinely standalone with an unresolved caveat - do not archive as a shortcut to avoid finishing the smoke test.
 
 ### Quality bar
 
@@ -54,7 +58,7 @@ A workflow is done only when all of the following are true:
 
 - Build one complete workflow per iteration, in `BACKLOG.md` order. Do not spread one iteration thinly across many workflows.
 - You may add workflows you judge valuable beyond the backlog, but never at the cost of the quality bar, and record them in `BACKLOG.md`.
-- Preserve existing work. Do not refactor `prd-generator/` or unrelated files unless fixing a real defect.
+- Preserve existing work. Do not refactor `archive/prd-generator/` or unrelated files unless fixing a real defect.
 - Prefer completing and smoke-testing one workflow over starting three.
 
 ## Conventions

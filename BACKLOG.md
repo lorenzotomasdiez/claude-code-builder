@@ -1,7 +1,9 @@
 # Workflow backlog
 
-Build these in order. Each is a self-contained workflow following the anatomy and quality bar in `CLAUDE.md`, with `prd-generator/` as the reference.
+Build these in order. Each is a self-contained workflow following the anatomy and quality bar in `CLAUDE.md`, with `archive/prd-generator/` as the reference.
 Build one complete workflow per iteration. Distill the relevant `experts/*.md` into each workflow's own subagents.
+
+This file lists every workflow ever built here in build order, regardless of where it physically lives today. Root `README.md` names the 16 current flagships; everything else here now lives under `archive/` (see `archive/README.md` for why) but keeps its full entry below for history.
 
 These are the recurring tasks a product and engineering team actually does day to day, ordered by how often the workflow would get reused (most-used first), so if a run only finishes the first few, they are the highest-value ones.
 You may add workflows beyond this list when you judge them valuable; if you do, append them here with a one-line intent and mark them `[added]`.
