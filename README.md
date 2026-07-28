@@ -26,7 +26,7 @@ Each package under this repo's root is copyable on its own - copy its directory 
 
 ## The flagship workflows
 
-These 17 packages are this library's best, most-trusted work: either a real end-to-end smoke test is recorded with nothing open since (**Solid**), or the package is load-bearing infrastructure for the greenfield pipeline below and under active maintenance. Everything else that's been built - superseded v1s, standalone packages with an open caveat or no run yet - lives in `archive/`, fully working and fully documented, just not in this set. See `STATUS.md` for what "Solid" requires and the exact state of every package, including these 17.
+These 17 packages are this library's best, most-trusted work: either a real end-to-end smoke test is recorded with nothing open since (**Solid**), or the package is load-bearing infrastructure for the greenfield pipeline below and under active maintenance. Superseded v1s and standalone packages with an open caveat live in `archive/`, fully working and fully documented, just not in this set; newer packages still awaiting their first real run are listed under "Recently built" below. See `STATUS.md` for what "Solid" requires and the exact state of every package.
 
 | Workflow | What it does |
 |---|---|
@@ -47,6 +47,21 @@ These 17 packages are this library's best, most-trusted work: either a real end-
 | `tdd-blueprint` | One task -> Given/When/Then spec set a developer does TDD from, no code written. |
 | `feature-implementer` | One task -> implemented slice, tests, self-review, PR body. |
 | `qa-suite-pro` | One task -> layered test strategy plus a real browser E2E pass, headless or headed. |
+
+## Recently built (not yet flagship)
+
+These six packages are complete and anatomy-clean, but none has a passing end-to-end run recorded yet, so none is claimed as flagship.
+They are at the repo root rather than in `archive/` because they are current work, not superseded work.
+`STATUS.md` records, per package, exactly what is unproven and what to watch on the first real run.
+
+| Package | What it does | Why it isn't flagship yet |
+|---|---|---|
+| `product-blueprint` | Basic PRD -> engineering-grade PRD (`index.md` plus promoted `fr-N.md`). One slash command driving one author agent - the library's first command-driven package with no workflow script. | Never run. No script means no schema validation and no anatomy-validator coverage; the agent's return contract is unproven. |
+| `design-preview` | PRD -> `DESIGN.md` plus one real rendered HTML screen via the Stitch MCP server, so a human can approve a visual direction in minutes. The library's first package to call MCP tools from a workflow. | First run failed at provisioning. Two defects fixed since, both unverified - the re-run is the test of whether a workflow subagent can reach an MCP server here. |
+| `screen-suite` | Approved direction -> the whole product rendered, plus a gallery contact sheet. Plans screens from requirements rather than one-per-requirement, and caps and names what it drops. | Blocked on `design-preview` succeeding once - it refuses to run without that workflow's `stitch.json`. |
+| `tech-blueprint` | PRD -> one right-sized technical document, where the deployment tier is a budget every later phase spends against, and empirical open questions are settled by a `stack-prober` that actually builds and runs the smallest falsifying thing. | Two attempts died on the subagent-registry snapshot (agents added mid-session are invisible). Needs a fresh session; the agents are already on disk. |
+| `functional-test-plan` | PRD -> one agent per functional requirement, each writing a complete test plan in natural language, never test code - then linked back into the PRD idempotently. | Same fresh-session constraint. A three-requirement smoke PRD is staged at `docs/prd/smoke-clipboard-history/`. |
+| `tdd-developer` | A tag (FR id, test-plan path, or bare free text) -> red/green implementation with an independent adjudicator routing every still-failing test to the right owner, plus a screenshotted browser journey. | The only workflow that writes production code, so it cannot be smoke-tested in this repo at all - it needs a scratch project with a real test runner. |
 
 ## The greenfield pipeline
 

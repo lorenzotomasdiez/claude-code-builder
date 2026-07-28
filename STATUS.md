@@ -27,7 +27,7 @@ Nothing here is hidden or rounded up. A workflow with real, working orchestratio
 | `technical-solution-proposal` | Six expert seats propose independently, cross-examine each other over capped rounds, and a synthesizer resolves what it can and records what stays disagreed. |
 | `spike-research` | Four independent research lenses, adversarially fact-checked, synthesized into an options matrix with a stated confidence level. |
 
-## Needs review (11)
+## Needs review (12)
 
 | Workflow | Open issue |
 |---|---|
@@ -41,12 +41,15 @@ Nothing here is hidden or rounded up. A workflow with real, working orchestratio
 | `status-report` | A factual error the critic caught survived the round cap ("eight of ten" vs. the three actually listed) - left in place as honest smoke-test evidence. |
 | `release-readiness` | Cosmetic structured-output artifact in two gates' reasoning text (does not affect the verdict) - flagged as a rough edge to watch for elsewhere. |
 | `docs-sync` | Smoke test only exercised Map/Detect (no drift found, so Propose/Verify/Revise never ran) - the actual correction loop is unexercised. |
+| `design-preview` | First real run failed at the Stitch provisioning step, and the diagnosis is recorded: the subagent never called `ToolSearch` at all, so its "MCP not connected" note was a conclusion it never checked. Two defects fixed since (a `tools:` frontmatter allowlist that excluded MCP, and Haiku on a multi-step MCP protocol), both unverified - the re-run is the test of whether a workflow subagent can reach an MCP server here. |
 | `feedback-triage` | Round cap reached with a genuine unresolved tiebreak (now vs. next horizon decided by assertion, no quantitative scoring to arbitrate). |
 
-## Never verified (12)
+## Never verified (17)
 
 | Workflow | What it needs |
 |---|---|
+| `product-blueprint` | A real run against a trivial basic PRD (a few sentences describing something small). Nothing is proven end to end: not that the author subagent returns the status shape its definition asks for, not that the split policy fires on a real input, and not that the orchestrator's post-write check catches anything real in one pass. It deliberately has no workflow script, so there is no schema validation and no `scripts/validate-workflow.mjs` coverage either - the first run is the only evidence that will exist. |
+| `screen-suite` | A real run, which is blocked on `design-preview` completing successfully once: it refuses to run without that workflow's `stitch.json`. The specific thing to watch is whether the planner really returns fewer screens than requirements - if it emits one screen per requirement, the central idea of the package did not survive contact with a real model. |
 | `prd-generator` | No recorded run at all - notably, this is the reference implementation every other workflow was measured against. |
 | `design-system-foundation` | A real run against design-blueprint output; schema validation against real agent output is unproven. |
 | `design-system-foundation-v2` | A real run, with and without a linked PRD; per-document size ceilings are untested estimates. |
@@ -56,6 +59,9 @@ Nothing here is hidden or rounded up. A workflow with real, working orchestratio
 | `qa-suite-pro` | A real run against a served app with `playwright-cli` installed, in both headless and headed mode. |
 | `task-breakdown` | A real initial run and a real incremental run against real upstream docs; archive behavior is unproven. |
 | `shadcn-installer` | Two real attempts both failed for environment reasons (agent registry doesn't hot-reload; a one-time interactive confirmation gate blocked headless runs) - not a proven defect, just genuinely unrun. |
+| `tech-blueprint` | A real run in a **fresh session**. Two attempts were made and both died at the first `agent()` call with `agent type 'tech-framer' not found` - the harness snapshots the subagent registry at session start, so the definitions copied into `.claude/agents/` mid-session were invisible. Same environment constraint `shadcn-installer` hit. The five agents are already on disk, so the next session needs no setup: re-run the command in the package README. Watch whether the framer lands on `local` rather than something heavier, whether the conditional `Reconcile` phase skips correctly, and whether `stack-prober` respects its sandbox. |
+| `functional-test-plan` | A real run in a **fresh session** (the registry-snapshot constraint again). A three-requirement test PRD is already at `docs/prd/smoke-clipboard-history/` and the three agents are staged in `.claude/agents/`. Watch four things: whether the writers actually stay in prose (the no-code rule is the package's defining constraint and the easiest to violate under a heading called "test plan"), whether the linker is genuinely idempotent - **run it twice** and confirm the second run reports `linksUpdated` rather than adding a second `Tests` row - whether its relative paths resolve from `docs/prd/<slug>/` to `docs/tests/<slug>/`, and whether the inventory returns exactly three requirements without renumbering. The promoted-`fr-N.md` linking path is not covered by that input at all. |
+| `tdd-developer` | A real run **in a scratch project outside this repo** - it writes production code, and this repo is a workflow library with no app to build into, so running it here would either fail at framing (no test framework) or start writing source into a docs repo. Start with a spec-free, UI-less tag like "a function that formats cents as a currency string" to exercise the derive-from-nothing path, then one with a UI for the browser phase. Watch: whether the haiku writers keep the red red (the likely bug is one creating the production module so its own import resolves - a non-empty `suspectHollow` on run one is that bug), whether `testFilesTouched` stays empty, whether the adjudicator picks a side instead of hedging, whether the one-retry cap actually stops, and whether the browser runner reports `blocked` honestly with no playwright-cli. |
 | `gnhf-backlog-maker` | A real run against a small real task in a real repo. |
 | `competitor-design-tokens` | A real run with `playwright-cli` and live internet access against a real competitor set. |
 | `solid-refactor-hunter` | A real run - deliberately withheld because it takes consequential unattended action (pushes branches, opens real PRs), not because it's expected to fail. |
