@@ -108,3 +108,12 @@ Observed result:
 
 Final verdict: **pass**, original repro fixed, regression test passed via
 mutation check, no outstanding issues.
+
+**Addendum**: `workflow-dry-run/workflow-dry-run.mjs` (a later, repo-wide
+no-LLM control-flow check) found that the Converge phase read
+`convergence.rootCause` with no guard against `agent()` resolving `null` on
+a transient subagent failure - a real crash-on-null-result bug, unrelated
+to the smoke test above. Fixed with a guard-and-throw clause; see
+`NULL_SAFETY_AFTER_FANOUT.md`'s "Extension" section for detail. Not
+re-verified with a second full end-to-end run, per this repo's rule against
+re-spending an already-proven fan-out.

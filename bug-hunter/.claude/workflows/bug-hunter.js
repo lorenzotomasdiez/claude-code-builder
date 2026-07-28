@@ -145,6 +145,9 @@ const convergence = await agent(
   `Converge on the single real root cause from the competing hypotheses above. Verify the specific claims you doubt against the code directly rather than trusting self-reported confidence, then commit to one cause and one fix direction.`,
   { agentType: 'bug-hunter-converger', schema: CONVERGENCE_SCHEMA, model: 'opus' }
 )
+if (!convergence) {
+  throw new Error('Converge phase failed: the converger returned no result (a transient subagent failure) - retry the run.')
+}
 log(`Root cause: ${convergence.rootCause} (${convergence.location})`)
 
 // --- Phase 4: Fix (single agent, sequential) ---
