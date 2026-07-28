@@ -6,7 +6,7 @@ See `BACKLOG.md` for the full catalog and rationale behind every workflow, and `
 
 ## Status
 
-30 workflow packages. **7 solid** (a real end-to-end run recorded, nothing open since), **11 need review** (working, with a specific named caveat - usually a fix that landed after the last real run), **12 never verified** (wiring-clean, no real run yet, usually for a stated reason: needs a live browser, needs a real repo to push branches against).
+31 workflow packages. **8 solid** (a real end-to-end run recorded, nothing open since), **11 need review** (working, with a specific named caveat - usually a fix that landed after the last real run), **12 never verified** (wiring-clean, no real run yet, usually for a stated reason: needs a live browser, needs a real repo to push branches against).
 
 See `STATUS.md` for the full per-package table and what "solid" actually requires. Nothing here is rounded up - a workflow with correct orchestration and one unverified fix is marked "needs review," not "solid," because the caveat is the information that matters.
 

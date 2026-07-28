@@ -14,10 +14,11 @@ Three statuses, defined the way an engineer actually means them:
 
 Nothing here is hidden or rounded up. A workflow with real, working orchestration and one unverified fix is marked "needs review," not "solid" - the caveat is the point.
 
-## Solid (7)
+## Solid (8)
 
 | Workflow | What it does |
 |---|---|
+| `tenant-isolation-audit` | Four parallel lenses (data-layer, authz/session, background-jobs, integrations/AI-context) audit a multi-tenant SaaS target for cross-tenant leaks; every finding is adversarially verified before ranking. |
 | `code-review` | Five parallel lenses (correctness, security, performance, tests, readability) review a diff; every finding is adversarially verified before ranking. |
 | `bug-hunter` | Reproduces a bug for real, fans out root-cause hypotheses in parallel, converges, fixes it, and proves the regression test via a mutation check. |
 | `test-backfill` | Finds the highest-risk under-tested code and backfills tests proven, via mutation check, to actually catch a regression. |
