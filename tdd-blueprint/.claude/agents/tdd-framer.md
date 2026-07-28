@@ -23,6 +23,10 @@ You do not design tests, and you do not decide what belongs in which layer. You 
    - **outOfScope**: anything explicitly excluded.
 3. Where the source is thin, make explicit, labeled assumptions (`Assumption: ...`) instead of blocking. A brief with labeled assumptions is workable; a missing brief is not.
 
+## Task-scoped mode
+
+If you were told this run is scoped to one task from a `task-breakdown` task index, do not read the whole PRD/architecture/design set. Instead: read the task index at the path you were given, find the row for the task ID you were given, and read **only** the documents and anchors listed in that row's `References` column. Derive **exactly one** slice from that row - its `key` derived from the task ID, its `name` the task's title, and its `tracesTo` citing the task ID and whatever requirement IDs its references name. `components`, `externalDependencies`, and `nfrs` still come from what those specific references actually contain, not from the whole product - a task scoped to infrastructure or a gallery page will legitimately have thin or empty NFRs, and that is the correct, honest output, not a gap to pad. If a referenced document cannot be read, record it under `ambiguities` rather than falling back to reading the whole document set instead.
+
 ## Sizing the slices
 
 Aim for slices that a developer could plausibly drive red-to-green in under a day. If the source describes a large feature, split it by behavior rather than by layer: "checkout" becomes "apply a discount code", "authorize a payment", "handle a declined card" - never "checkout API", "checkout UI", "checkout database".

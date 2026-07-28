@@ -5,10 +5,14 @@ decision area this product actually has to decide, the real candidates with
 sourced evidence, a weighted score, a winner, an explicit statement of what that
 winner gives up, and what would flip the decision later.
 
-The output is designed to be handed to `/architecture-designer`, which currently
-fills its "Tech-Stack Decision Records" table from the model's own head - its
-writer agent is explicitly told not to research beyond its brief. This workflow
-is the missing step: it does the research, and the architecture cites it.
+The output is designed to be handed to `/architecture-designer`: when this
+workflow is run against a real PRD file, it writes its document as a sibling of
+that PRD and links back to it with one minimal edit to the PRD's header - the
+same hub-and-spoke handoff `architecture-designer` itself uses for its own
+document. `architecture-designer`'s clarifier already reads the whole PRD, so
+it picks up that link on its own and feeds the decided choices to its writer,
+which cites them in its "Tech-Stack Decision Records" table instead of
+re-deriving a stack from its own head. No pasting one document into another.
 
 ## Why this exists (and what it is not)
 
@@ -42,13 +46,16 @@ Pipeline, one independent chain per decision area (no barrier between stages):
         |
         v  (barrier - coherence is a cross-area property)
 Author (1 agent)
-  writes the document: recommended stack, one matrix per area,
-  coherence check, what was NOT decided, risks, architect handoff, sources
+  writes the document to disk: recommended stack, one matrix per area,
+  coherence check, what was NOT decided, risks, architect handoff, sources.
+  If given a real PRD path, links back to it with one minimal edit and
+  reports only {path, charCount, version, prdLinked} - never the full text.
         |
         v
 Critique (3 agents in parallel, opus) -> Revise (author again)
   integration-coherence | evidence-quality | boring-alternative
-  needs_revision if ANY lens flags anything; capped at 2 rounds
+  each reads the draft from disk by path; needs_revision if ANY lens flags
+  anything; capped at 2 rounds, re-reading/re-writing the same file in place
 ```
 
 ## Files
@@ -64,28 +71,35 @@ Critique (3 agents in parallel, opus) -> Revise (author again)
   hard constraints, scores every cell 1-5 with a justification tied to a specific
   evidence item, and produces the winner plus what it gives up. Adds no facts.
 - `.claude/agents/stack-author.md` - the only agent that writes document prose.
-  Handles both the first draft and revision passes.
+  Handles first-draft and revision passes. Writes the document directly to disk
+  (`Write` tool) and, on the first pass only and only when a real PRD path was
+  given, makes one targeted edit (`Edit` tool) to the source PRD's header Links
+  row so it references the new document. Never returns document text, only a
+  status (`{path, charCount, version, prdLinked}`).
 - `.claude/agents/stack-critic.md` - adversarial review through exactly one lens
-  per invocation, against a fixed per-lens checklist.
+  per invocation, against a fixed per-lens checklist, reading the draft from
+  disk by path rather than receiving it inline.
 - `.claude/workflows/tech-stack-selector.js` - the orchestration script.
 - `.claude/commands/tech-stack-selector.md` - the `/tech-stack-selector` entry
-  point; writes the result to `docs/architecture/<slug>-tech-stack.md`.
+  point. Does not write the file itself - `stack-author` already did.
 
 ## Usage
 
 ```
-/tech-stack-selector docs/product/notification-service-prd.md | 2 backend devs, no infra engineer, 3-month deadline, must run on the client's existing AWS account
+/tech-stack-selector docs/product-specs/notification-service-prd.md | 2 backend devs, no infra engineer, 3-month deadline, must run on the client's existing AWS account
 ```
 
-Or with the product described inline:
+Or with the product described inline (no PRD file, so no sibling path and no automatic link):
 
 ```
 /tech-stack-selector A B2B invoice reconciliation tool for accounting teams, ~200 customers, CSV imports up to 500k rows | small team, TypeScript shop, GDPR
 ```
 
-Everything after `|` is treated as constraints. The document lands in
-`docs/architecture/`. To hand it to the architect, paste it into the
-`/architecture-designer` request.
+Everything after `|` is treated as constraints. When `prd` is a real path to a
+`.md` file, the document lands next to it (`<prd-dir>/<slug>-tech-stack.md`) and
+the PRD's Links row is updated to reference it - see Handoff below. When `prd`
+is an inline description instead, there is no PRD file to sit beside or link
+from, so the document falls back to a standalone path under `docs/architecture/`.
 
 ## Design rationale
 
@@ -140,15 +154,55 @@ answer than the one the matrix produced.
 
 ## Handoff
 
-The output feeds `/architecture-designer`: paste the document into the request.
-Section 7 of the document ("Handoff to the Architect") states which decisions the
-architecture must take as given and must not silently contradict, and what the
-architecture still has to decide (component boundaries, data flow, deployment
-topology). `architecture-designer` is deliberately left unmodified - this
-workflow, like every other in this repo, is independently runnable and does not
-reach into another workflow.
+The output feeds `/architecture-designer` automatically when this workflow was
+run against a real PRD file: the PRD's header Links row now references the
+tech-stack document, and `architecture-designer`'s `architecture-clarifier`
+already reads the whole PRD, so it picks up that link, reads the document, and
+carries the decided choices into its own brief as `techStackDecisions` for
+`architecture-writer` to cite in Section 5. No pasting one document into
+another, and no direct coupling between the two workflow packages either - each
+reads the PRD, neither imports the other's agents or code. Section 7 of the
+tech-stack document ("Handoff to the Architect") still states which decisions
+the architecture must take as given and must not silently contradict, and what
+the architecture still has to decide (component boundaries, data flow,
+deployment topology) - that section is for the human reader; the automatic
+handoff above is for the next workflow run.
+
+If `tech-stack-selector` was run with an inline product description instead of
+a real PRD path, there is nothing to link, and `architecture-designer` will not
+discover the document - run it again against the PRD once one exists, or point
+`architecture-designer`'s `focus` field at it manually.
 
 ## Smoke test
+
+**Status: PASS**, re-run for the write-to-disk/PRD-linking behavior in a
+separate consuming project (`workflows-folder-test`), audited via this repo's
+`context-bloat-forensics` tool rather than run again from here - see
+`../reports/context-bloat-forensics/2026-07-27-workflows-folder-test-tech-stack-selector-run.md`
+for the full forensic detail. Summary:
+
+- Ran against a real PRD for a browser-only AI-assisted Markdown editor, with
+  shadcn/ui pre-decided as a constraint. Frame -> Research (5 areas) -> Score ->
+  Author -> Critique/Revise (capped at 2 rounds) all ran; 19 agent invocations, 0
+  errors, all schemas validated.
+- The document was written to disk and the PRD's Links row was updated - the
+  write-to-disk/PRD-link behavior this refactor was for works end to end.
+- Round cap (2) was reached with all 3 critique lenses still returning
+  `needs_revision` - the same honest "return the best draft, do not fabricate a
+  clean pass" behavior already established elsewhere in this library.
+- The audit surfaced three real problems the write-to-disk refactor did not
+  cover, since they are a different failure mode: (1) the Author phase receives
+  the entire framing-plus-all-scoring-matrices payload inline (92,802 tokens in
+  one turn) instead of the research/scoring being persisted to scratch files and
+  referenced by path, (2) the critique-to-revise handoff quotes full issue text
+  rather than citing section/line references, which grew the document 51%
+  between v0.1 and v0.2 without the flagged issues actually converging, and (3)
+  `stack-author`'s self-reported `charCount` after a revise pass was off by
+  2.2x from the real file on disk (32,500 reported vs 71,448 actual) - fixed
+  below. (1) and (2) are follow-up work, not yet fixed, and are a different bug
+  class from the write-to-disk fix this refactor already made.
+
+### Prior result (pre-refactor for the write/link behavior; pipeline and critique behavior unchanged)
 
 Ran once, end to end, via a headless `claude -p` session with its working
 directory set to `tech-stack-selector/` (so the Workflow tool resolves the custom

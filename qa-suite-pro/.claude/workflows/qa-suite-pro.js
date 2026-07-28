@@ -1,13 +1,13 @@
 export const meta = {
   name: 'qa-suite-pro',
-  description: 'Full QA of a service/area: architect a layered code-test strategy AND derive UI user stories, engineer the missing code tests and run them, verify coverage, then drive a real headless browser (playwright-cli) through each UI story with screenshots, and report code + UI results',
+  description: 'Full QA of a service/area: architect a layered code-test strategy AND derive UI user stories, engineer the missing code tests and run them, verify coverage, then drive a real browser (playwright-cli, headless or headed) through each UI story with screenshots, and report code + UI results',
   phases: [
     { title: 'Scope', detail: 'normalize the target and locate code, existing tests, docs, the test runner, and how/where the app runs in a browser' },
     { title: 'Strategy', detail: 'qa-architect: inventory existing coverage, build the code-test matrix and gaps, and derive UI user stories for the browser E2E pass' },
     { title: 'Implement', detail: 'qa-engineer: write the missing code tests per the gaps, then run the suite' },
     { title: 'Verify', detail: 'qa-coverage-critic: check delivered code coverage against the strategy; capped loop back to the engineer' },
-    { title: 'Author stories', detail: 'write the derived UI stories to YAML in this run\'s timestamped folder' },
-    { title: 'Browse', detail: 'drive a headless browser through each UI story in parallel, screenshot every step, capture pass/fail and console errors' },
+    { title: 'Author stories', detail: 'write the derived UI stories to YAML in this run\'s docs/qa-reports/ folder' },
+    { title: 'Browse', detail: 'drive a real browser (headless or headed) through each UI story in parallel, screenshot every step, capture pass/fail and console errors' },
     { title: 'Report', detail: 'qa-reporter: synthesize the code-test results and the browser E2E results into one report' },
   ],
 }
@@ -25,6 +25,7 @@ const SCOPE_SCHEMA = {
     baseUrl: { type: 'string' },
     startCommand: { type: 'string' },
     existingStoryPaths: { type: 'array', items: { type: 'string' } },
+    behaviorSpecsPath: { type: 'string' },
     notes: { type: 'string' },
   },
   required: ['target', 'testRunner', 'hasUi'],
@@ -156,6 +157,16 @@ const BROWSER_SCHEMA = {
   required: ['story', 'status'],
 }
 
+const DOC_STATUS_SCHEMA = {
+  type: 'object',
+  properties: {
+    path: { type: 'string' },
+    charCount: { type: 'number' },
+    version: { type: 'string' },
+  },
+  required: ['path', 'charCount', 'version'],
+}
+
 // Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
 // string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
 let input = args
@@ -168,27 +179,47 @@ if (typeof input === 'string') {
   }
 }
 
+const taskId = (input && typeof input === 'object' && input.taskId) || null
+const tasksPath = (input && typeof input === 'object' && input.tasksPath) || null
+const taskScoped = Boolean(taskId && tasksPath)
+
 const target = typeof input === 'string' ? input : input && input.target
-if (!target) {
+if (!target && !taskScoped) {
   throw new Error(
     'Missing the QA target. Call this workflow with args set to either a plain string ' +
-    '(the service/area to QA) or an object shaped { "target": "...", "runId": "<timestamp>", "baseUrl": "optional", "context": "optional" }.'
+    '(the service/area to QA), an object shaped { "target": "...", "runId": "<timestamp>", "baseUrl": "optional", "context": "optional", "headed": false }, ' +
+    'or an object shaped { "tasksPath": "path to a tasks.md", "taskId": "T3", "headed": false, "date": "YYYY-MM-DD" } for a task-scoped run.'
   )
 }
 // The command supplies runId - workflow scripts cannot generate timestamps themselves.
 const runId = (input && typeof input === 'object' && input.runId) || 'run'
 const baseUrlHint = (input && typeof input === 'object' && input.baseUrl) || ''
 const context = (input && typeof input === 'object' && input.context) || ''
-const runDir = `qa-runs/qa-suite-pro-${runId}`
+const headed = !!(input && typeof input === 'object' && input.headed)
+const date = (input && typeof input === 'object' && input.date) || 'unknown'
+
+function slugify(text) {
+  const slug = (text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+  return slug || 'untitled'
+}
+// Both modes now land under one coherent tree, docs/qa-reports/, instead of splitting a
+// timestamped qa-runs/ folder from a separately-named report file - one place per product,
+// one subfolder per run, whether that run is a whole-target sweep or a single task.
+const productSlugMatch = taskScoped && tasksPath.match(/([^/]+)\/tasks\.md$/i)
+const productSlug = taskScoped ? ((productSlugMatch && productSlugMatch[1]) || slugify(tasksPath)) : slugify(target)
+const outDir = taskScoped ? `docs/qa-reports/${productSlug}/${taskId}/` : `docs/qa-reports/${productSlug}/${runId}/`
 
 // --- Phase 1: Scope ---
 phase('Scope')
 const scope = await agent(
-  `Normalize this QA target and locate what QA needs: "${target}". Extra context: ${context || 'none'}. Base URL hint (may be empty): ${baseUrlHint || 'none'}.\n` +
-  `Find the code paths, existing tests, docs, and the test runner + run command. Also determine whether this target has a browser UI, and if so the base URL it serves on and the command to start it, plus any existing UI story YAML files. Map the terrain; do not judge or write anything.`,
+  taskScoped
+    ? `This is a task-scoped run. Task index: ${tasksPath}. Task ID: ${taskId}. Read that row first - use its title as the QA target and its References column to locate the code it touched. Extra context: ${context || 'none'}. Base URL hint (may be empty): ${baseUrlHint || 'none'}.\n` +
+      `Find the code paths, existing tests, docs, and the test runner + run command. Also determine whether this target has a browser UI, and if so the base URL it serves on and the command to start it, plus any existing UI story YAML files and the task's own behaviorSpecsPath per your task-scoped-mode instructions. Map the terrain; do not judge or write anything.`
+    : `Normalize this QA target and locate what QA needs: "${target}". Extra context: ${context || 'none'}. Base URL hint (may be empty): ${baseUrlHint || 'none'}.\n` +
+      `Find the code paths, existing tests, docs, and the test runner + run command. Also determine whether this target has a browser UI, and if so the base URL it serves on and the command to start it, plus any existing UI story YAML files. Map the terrain; do not judge or write anything.`,
   { agentType: 'qa-suite-pro-scoper', schema: SCOPE_SCHEMA }
 )
-log(`Scope ready: runner ${scope.testRunner}, ${(scope.existingTestPaths || []).length} test file(s), hasUi=${scope.hasUi}${scope.baseUrl ? `, baseUrl ${scope.baseUrl}` : ''}`)
+log(`Scope ready: runner ${scope.testRunner}, ${(scope.existingTestPaths || []).length} test file(s), hasUi=${scope.hasUi}${scope.baseUrl ? `, baseUrl ${scope.baseUrl}` : ''}${scope.behaviorSpecsPath ? `, behavior specs ${scope.behaviorSpecsPath}` : ''}`)
 
 // --- Phase 2: Strategy ---
 phase('Strategy')
@@ -233,29 +264,65 @@ let browserResults = []
 if (strategy.uiStories.length > 0) {
   phase('Author stories')
   const authored = await agent(
-    `Write these UI user stories to a single YAML file at ${runDir}/user-stories/stories.yaml using the Bowser story format ('stories:' array; each item has name, url, and a 'workflow: |' block of imperative steps). Create the directory. Return the file path and the list of stories with their slugs.\n\nStories:\n${JSON.stringify(strategy.uiStories, null, 2)}`,
+    `Write these UI user stories to a single YAML file at ${outDir}/user-stories/stories.yaml using the Bowser story format ('stories:' array; each item has name, url, and a 'workflow: |' block of imperative steps). Create the directory. Return the file path and the list of stories with their slugs.\n\nStories:\n${JSON.stringify(strategy.uiStories, null, 2)}`,
     { agentType: 'qa-suite-pro-story-author', phase: 'Author stories', schema: AUTHOR_SCHEMA }
   )
   log(`Authored ${authored.stories.length} story file entries at ${authored.storiesFile}`)
 
   phase('Browse')
+  const modeNote = headed
+    ? 'a real, visible browser window via `playwright-cli --headed` (pass --headed to `open`)'
+    : 'a headless browser via `playwright-cli`'
   browserResults = (await parallel(strategy.uiStories.map(story => () =>
     agent(
-      `Execute this UI user story in a headless browser via playwright-cli, step by step, screenshotting after every step into ${runDir}/screenshots/${story.slug}/. Report pass/fail per the browser-runner contract, capturing JS console errors on failure.\n\nStory name: ${story.name}\nStart URL: ${story.url}\nSteps:\n${story.workflow}`,
+      `Execute this UI user story in ${modeNote}, step by step, screenshotting after every step into ${outDir}/screenshots/${story.slug}/. Report pass/fail per the browser-runner contract, capturing JS console errors on failure.\n\nStory name: ${story.name}\nStart URL: ${story.url}\nSteps:\n${story.workflow}`,
       { agentType: 'qa-suite-pro-browser-runner', label: `browse:${story.slug}`, phase: 'Browse', schema: BROWSER_SCHEMA }
     )
   ))).filter(Boolean)
   const passed = browserResults.filter(r => r.status === 'pass').length
-  log(`Browser E2E: ${passed}/${browserResults.length} stories passed`)
+  log(`Browser E2E (${headed ? 'headed' : 'headless'}): ${passed}/${browserResults.length} stories passed`)
 } else {
   log('No UI stories - skipping browser E2E phase')
 }
 
 // --- Phase 7: Report ---
 phase('Report')
-const report = await agent(
-  `Write a QA report in markdown for this target, covering BOTH the code-test results and the browser E2E results. Include: overall verdict, code strategy + coverage vs matrix + gaps still open, actual code-test run results and defects, and the browser story results (per story: pass/fail, steps, screenshot dir, console errors on failure) with the screenshots root at ${runDir}/screenshots/. End with remaining risk and a clear ship / do-not-ship recommendation. Be honest about anything unverified.\n\nTarget: ${scope.target}\nRun dir: ${runDir}\n\nStrategy:\n${JSON.stringify(strategy, null, 2)}\n\nCode engineering:\n${JSON.stringify(engineering, null, 2)}\n\nCode coverage verdict:\n${JSON.stringify(coverage, null, 2)}\n\nBrowser E2E results:\n${JSON.stringify(browserResults, null, 2)}`,
-  { agentType: 'qa-suite-pro-reporter' }
+const reportStatus = await agent(
+  `Write a QA report in markdown to ${outDir}report.md, covering BOTH the code-test results and the browser E2E results. Include: overall verdict, code strategy + coverage vs matrix + gaps still open, actual code-test run results and defects, and the browser story results (per story: pass/fail, steps, screenshot dir, console errors on failure) with the screenshots root at ${outDir}screenshots/. End with remaining risk and a clear ship / do-not-ship recommendation. Be honest about anything unverified.\n\nTarget: ${scope.target}\nOutput dir: ${outDir}\n\nStrategy:\n${JSON.stringify(strategy, null, 2)}\n\nCode engineering:\n${JSON.stringify(engineering, null, 2)}\n\nCode coverage verdict:\n${JSON.stringify(coverage, null, 2)}\n\nBrowser E2E results:\n${JSON.stringify(browserResults, null, 2)}`,
+  { agentType: 'qa-suite-pro-reporter', schema: DOC_STATUS_SCHEMA }
 )
+log(`Report written to ${reportStatus.path} (${reportStatus.charCount} chars, ${reportStatus.version})`)
 
-return { scope, strategy, engineering, coverage, browserResults, runDir, report }
+// Compact return - the full strategy/engineering/coverage/browserResults objects already did
+// their job (feeding the report above); the report itself now lives on disk, not in the
+// return value, and the command only needs summary numbers plus the failure detail to act on.
+const browserSummary = browserResults.map(r => ({
+  story: r.story,
+  status: r.status,
+  stepsPassed: r.stepsPassed,
+  stepsTotal: r.stepsTotal,
+  failedAtStep: r.failedAtStep,
+  failureDetail: r.status === 'fail' || r.status === 'blocked' ? r.failureDetail : undefined,
+  screenshotDir: r.screenshotDir,
+}))
+
+return {
+  target: scope.target,
+  hasUi: scope.hasUi,
+  codeGapsFound: strategy.gaps.length,
+  codeRoundsRun: round,
+  codeCoverageVerdict: coverage ? coverage.verdict : 'not-run',
+  codeGapsRemaining: coverage ? (coverage.remainingGaps || []).length : strategy.gaps.length,
+  testsWritten: engineering ? (engineering.testsWritten || []).length : 0,
+  testsPassed: engineering ? engineering.passed : undefined,
+  testsFailed: engineering ? engineering.failed : undefined,
+  uiStoriesRun: browserSummary.length,
+  uiStoriesPassed: browserSummary.filter(r => r.status === 'pass').length,
+  browserResults: browserSummary,
+  reportPath: reportStatus.path,
+  outDir,
+  headed,
+  taskScoped,
+  taskId,
+  tasksPath,
+}

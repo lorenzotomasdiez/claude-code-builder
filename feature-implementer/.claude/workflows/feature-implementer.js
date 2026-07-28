@@ -7,6 +7,7 @@ export const meta = {
     { title: 'Green', detail: 'per slice: implement until the verifier reports a real exit code of 0' },
     { title: 'Review', detail: 'three independent lenses in parallel: spec conformance, regression risk, code quality' },
     { title: 'Draft PR', detail: 'synthesize every slice into one PR body, blocked work stated first' },
+    { title: 'Mark task done', detail: 'task-scoped runs only: one targeted edit to tasks.md, only when nothing is blocked' },
   ],
 }
 
@@ -112,17 +113,23 @@ if (typeof input === 'string') {
   }
 }
 
-const behaviorSpecs = input && typeof input === 'object' && input.behaviorSpecs
-const tddPlan = input && typeof input === 'object' && input.tddPlan
-if (!behaviorSpecs || !tddPlan) {
+const behaviorSpecsPath = input && typeof input === 'object' && input.behaviorSpecsPath
+const tddPlanPath = input && typeof input === 'object' && input.tddPlanPath
+if (!behaviorSpecsPath || !tddPlanPath) {
   throw new Error(
     'This workflow runs downstream of /tdd-blueprint and does not invent its own acceptance criteria. ' +
-    'Call it with args shaped { "behaviorSpecs": "<contents of docs/testing/<slug>/behavior-specs.md>", ' +
-    '"tddPlan": "<contents of docs/testing/<slug>/tdd-plan.md>", "context": "<optional repo context>" }. ' +
+    'Call it with args shaped { "behaviorSpecsPath": "path to behavior-specs.md", ' +
+    '"tddPlanPath": "path to tdd-plan.md", "context": "<optional repo context>", ' +
+    '"tasksPath": "<optional: path to a tasks.md, for a task-scoped run>", "taskId": "<optional: the task ID>", ' +
+    '"date": "<optional: today\'s date, needed only alongside tasksPath/taskId>" }. ' +
     'If no blueprint exists yet, run /tdd-blueprint first.'
   )
 }
 const context = (input && typeof input === 'object' && input.context) || ''
+const tasksPath = (input && typeof input === 'object' && input.tasksPath) || null
+const taskId = (input && typeof input === 'object' && input.taskId) || null
+const date = (input && typeof input === 'object' && input.date) || null
+const taskScoped = Boolean(tasksPath && taskId)
 
 // Two separate caps, because they fail for different reasons. FIX rounds address a machine
 // failure (the command exits nonzero); REVIEW rounds address human-style judgment. Research
@@ -147,7 +154,7 @@ function verifyPassed(v) {
 phase('Read blueprint')
 const blueprint = await agent(
   `Normalize this TDD blueprint into behavior specs and an ordered slice list. Carry every spec ID through exactly as written - do not renumber, rename, invent, or drop any.\n\n` +
-  `<behavior_specs>\n${behaviorSpecs}\n</behavior_specs>\n\n<tdd_plan>\n${tddPlan}\n</tdd_plan>`,
+  `Behavior specs document: ${behaviorSpecsPath}\nTDD plan document: ${tddPlanPath}\n\nRead both in full before extracting anything.`,
   { agentType: 'feature-implementer-blueprint-reader', schema: BLUEPRINT_SCHEMA }
 )
 log(`Blueprint read: ${blueprint.specs.length} spec(s), ${blueprint.slices.length} slice(s) in build order`)
@@ -303,4 +310,52 @@ const prBody = await agent(
   { agentType: 'feature-implementer-pr-writer' }
 )
 
-return { blueprint, slices: priorSlices, blockedSlices, notGenuinelyRed, prBody }
+// --- Phase 6: Mark the task done (single agent, sequential - task-scoped runs only) ---
+// Only runs when every slice shipped. A run with any blocked slice must never mark the task
+// done - the whole point of the machine-gated review loop above is that "done" means something.
+let taskMarkedDone = false
+if (taskScoped) {
+  if (blockedSlices.length === 0) {
+    phase('Mark task done')
+    const update = await agent(
+      `Mark task ${taskId} as done in the task index at ${tasksPath}. Today's date: ${date || 'unknown - use a placeholder and note it'}.`,
+      { agentType: 'feature-implementer-task-updater' }
+    )
+    taskMarkedDone = Boolean(update && update.updated)
+    log(taskMarkedDone ? `Task ${taskId} marked done in ${tasksPath}` : `Task ${taskId} status update did not confirm success - check ${tasksPath} manually`)
+  } else {
+    log(`Task ${taskId} left as-is in ${tasksPath} - ${blockedSlices.length} slice(s) blocked, not marking done`)
+  }
+}
+
+// Compact per-slice summary for the return value - the full tests/implementation/verification/
+// review detail already did its job (feeding the PR writer above) and does not need to travel
+// again in the workflow's own result, growing linearly with slice count on every run.
+const summarizeSlice = s => ({
+  step: s.slice.step,
+  sliceKey: s.slice.sliceKey,
+  goal: s.slice.goal,
+  status: s.status,
+  blockedReason: s.blockedReason,
+  wasGenuinelyRed: s.wasGenuinelyRed,
+  specIds: s.slice.specIds,
+  filesChanged: (s.implementation && s.implementation.filesChanged) || [],
+  reviewIssues: (s.reviews || [])
+    .filter(r => r.verdict === 'needs_revision')
+    .flatMap(r => (r.issues || []).map(issue => ({ lens: r.lens, issue })))
+    .slice(0, 10),
+})
+const slicesSummary = priorSlices.map(summarizeSlice)
+
+return {
+  product: blueprint.product,
+  blueprintGaps: blueprint.gaps || [],
+  slices: slicesSummary,
+  blockedSlices: slicesSummary.filter(s => s.status === 'blocked'),
+  notGenuinelyRed: slicesSummary.filter(s => !s.wasGenuinelyRed).map(s => s.sliceKey),
+  prBody,
+  taskScoped,
+  taskId,
+  tasksPath,
+  taskMarkedDone,
+}

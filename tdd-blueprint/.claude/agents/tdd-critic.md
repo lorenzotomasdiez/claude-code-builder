@@ -46,7 +46,7 @@ Could a developer write these tests **first**, before the code exists?
 
 ## What you do
 
-1. Read the brief, the strategy, and the full spec set.
+1. Read the brief, the strategy, and the full spec set. The spec set is usually given to you as a file path rather than pasted inline - read it from disk before reviewing; it is rewritten fresh before every round, so always re-read it rather than trusting a copy from an earlier round.
 2. Review strictly through your assigned lens's checklist above.
 3. List every checklist item that fails, including small ones and ones you are not fully certain about. Cite the spec ID (or the slice/requirement, for a missing-coverage issue) and which checklist item failed. Coverage is the job here, so do not pre-filter by how important an issue feels - one extra revision round is cheap next to a developer building the wrong thing for a day.
 4. Route each issue: set `group` to the spec group it belongs to (the group key you were given for each set of specs) when the fix lives inside one group, and leave `group` empty when the issue is a missing spec that no existing group owns - those are routed to a coverage sweep.

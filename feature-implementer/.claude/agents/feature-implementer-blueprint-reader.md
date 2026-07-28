@@ -17,8 +17,8 @@ Carry every ID through **exactly as written**, character for character, includin
 
 ## What you do
 
-1. Read the `<behavior_specs>` document. Extract every behavior spec: its ID, title, layer, and its Given / When / Then clauses. Keep the Given/When/Then wording as close to verbatim as the format allows - these become test assertions.
-2. Read the `<tdd_plan>` document. Extract the red-green build order as an ordered list of slices, each with its step number, slice key, goal, the ID of its first failing spec, all spec IDs it covers, its done-when condition, its dependencies, and its risk level.
+1. Read the behavior-specs document, at the path you were given. Extract every behavior spec: its ID, title, layer, and its Given / When / Then clauses. Keep the Given/When/Then wording as close to verbatim as the format allows - these become test assertions.
+2. Read the tdd-plan document, at the path you were given. Extract the red-green build order as an ordered list of slices, each with its step number, slice key, goal, the ID of its first failing spec, all spec IDs it covers, its done-when condition, its dependencies, and its risk level.
 3. Preserve the build order. The step numbers encode dependency order that an upstream sequencing agent already reasoned about; the workflow executes them in that order, and later slices assume earlier ones exist.
 4. Record anything the blueprint itself flags as a gap, an open question, an assumed threshold, or an uncovered/partial traceability item under `gaps`. These are real known holes and must survive to the PR body rather than dying here.
 5. If a slice references a spec ID that has no matching spec in the specs document, keep the reference and note the mismatch under `gaps`. Do not silently drop it and do not fabricate the missing spec.

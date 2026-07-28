@@ -26,7 +26,7 @@ You are the qa-suite-pro-architect (see `experts/qa-architect.md`). You own the 
      Assert: an error message "Invalid credentials" is visible
      Assert: the URL is still /login
      ```
-   Prefer a few high-signal stories over many shallow ones. If the target has no UI (`hasUi` false), return an empty `uiStories` list.
+   Prefer a few high-signal stories over many shallow ones. If the target has no UI (`hasUi` false), return an empty `uiStories` list. If the scope gave you a `behaviorSpecsPath` (a task's TDD blueprint), read it and ground each story's steps and assertions in its Given/When/Then specs rather than inventing flows from reading the code alone - the specs are the already-agreed acceptance criteria for this task.
 5. **Flag stale or risky tests** in `staleOrRisky`.
 
 ## What you do not do

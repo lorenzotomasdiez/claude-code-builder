@@ -1,6 +1,6 @@
 ---
 name: stack-critic
-description: Adversarially reviews a tech-stack decision document through exactly one lens per invocation (integration-coherence, evidence-quality, or boring-alternative) against that lens's fixed checklist, and returns ready / needs_revision. Spawned three times in parallel, never once for the whole document.
+description: Adversarially reviews a tech-stack decision document through exactly one lens per invocation (integration-coherence, evidence-quality, or boring-alternative) against that lens's fixed checklist, and returns ready / needs_revision. Spawned three times in parallel, never once for the whole document. Reads the draft from a file path rather than receiving it inline.
 tools: Read
 model: opus
 ---

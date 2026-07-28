@@ -187,6 +187,42 @@ const CRITIQUE_SCHEMA = {
   required: ['lens', 'verdict', 'issues'],
 }
 
+// The stack-author agent always writes the document to disk itself and reports back only
+// this - never the document text - so it is never re-embedded into downstream prompts.
+// Critics and revise passes are given the path and read it themselves. prdLinked is only
+// meaningful on the first-pass Author call, and only when a real PRD path was available.
+const DRAFT_STATUS_SCHEMA = {
+  type: 'object',
+  properties: {
+    path: { type: 'string' },
+    charCount: { type: 'number' },
+    version: { type: 'string' },
+    prdLinked: { type: 'boolean' },
+  },
+  required: ['path', 'charCount', 'version'],
+}
+
+function slugify(text) {
+  const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+  return slug || 'untitled'
+}
+
+// If `prd` looks like a real path to a PRD file (no spaces, ends in .md), write the stack
+// document as a sibling of it and link back from its Links row - the hub-and-spoke pattern
+// shared with architecture-designer.js. If `prd` is an inline product description instead
+// (has spaces, is not a .md path), there is no PRD file to sit next to or link from, so fall
+// back to a standalone path under docs/architecture/.
+function stackPathFor(prdPath, productSummary) {
+  if (prdPath) {
+    const lastSlash = prdPath.lastIndexOf('/')
+    const dir = lastSlash === -1 ? '' : prdPath.slice(0, lastSlash + 1)
+    const base = lastSlash === -1 ? prdPath : prdPath.slice(lastSlash + 1)
+    const stem = base.replace(/\.md$/i, '').replace(/-?prd$/i, '')
+    return `${dir}${stem ? stem + '-' : ''}tech-stack.md`
+  }
+  return `docs/architecture/${slugify(productSummary)}-tech-stack.md`
+}
+
 // Normalize args: this environment can deliver the Workflow `args` as a JSON-encoded
 // string. Parse it back to an object when that happens; keep a genuine plain-string arg as-is.
 let input = args
@@ -208,6 +244,8 @@ if (!prd) {
 }
 const constraints = (input && typeof input === 'object' && input.constraints) || 'none stated'
 const date = (input && typeof input === 'object' && input.date) || 'unknown - fill in before this leaves Draft'
+const trimmedPrd = prd.trim()
+const prdPath = /\.md$/i.test(trimmedPrd) && !/\s/.test(trimmedPrd) ? trimmedPrd : null
 
 // --- Phase 1: Frame (single agent, sequential - everything downstream depends on it) ---
 phase('Frame')
@@ -284,36 +322,42 @@ if (scored.length < areas.length) {
 }
 log(`Scored: ${scored.map(s => `${s.area.area} -> ${s.scoring.winner} (${s.scoring.confidence} confidence)`).join('; ')}`)
 
-// --- Phase 4: Author (single agent - one voice owns the document) ---
+// --- Phase 4: Author (single agent - one voice owns the document) - writes to disk,
+// links back from the PRD when one exists, returns status only ---
 phase('Author')
-let draft = await agent(
-  `Write the tech-stack decision document from the framing and the scored decision areas below, following the house structure exactly. Date to use for "Last updated": ${date}.\n\n` +
+const stackPath = stackPathFor(prdPath, framing.productSummary)
+let draftStatus = await agent(
+  `Write the tech-stack decision document to file ${stackPath} from the framing and the scored decision areas below, following the house structure exactly. Date to use for "Last updated": ${date}. Version: v0.1.\n\n` +
   `Framing:\n${JSON.stringify(framing, null, 2)}\n\n` +
-  `Scored decision areas (evidence plus scoring, one per area):\n${JSON.stringify(scored, null, 2)}`,
-  { agentType: 'stack-author' }
+  `Scored decision areas (evidence plus scoring, one per area):\n${JSON.stringify(scored, null, 2)}` +
+  (prdPath
+    ? `\n\nThen link back from the source PRD: read ${prdPath}, find its header "Links" row, and add a reference to ${stackPath} there - if a "Tech design" entry already exists (e.g. an architecture document already linked it), append " · [Tech Stack](path)" to that same cell; otherwise replace the bare "Tech design" placeholder with "Tech design: [Tech Stack](path)". This must be a minimal, targeted edit - do not touch anything else in the PRD. Set prdLinked to whether this succeeded.`
+    : ''),
+  { agentType: 'stack-author', schema: DRAFT_STATUS_SCHEMA }
 )
+const prdLinked = draftStatus.prdLinked === true
+log(`Stack document written to ${draftStatus.path} (${draftStatus.charCount} chars, ${draftStatus.version})` + (prdPath ? ` - PRD linked: ${prdLinked}` : ' - no PRD path given, standalone document'))
 
-// --- Phase 5/6: Critique -> Revise loop (parallel lenses, capped rounds) ---
+// --- Phase 5/6: Critique -> Revise loop (parallel lenses read from disk, capped rounds) ---
 // The critique needs the whole stack at once (coherence is a cross-area property),
 // so this is the one place a barrier is genuinely justified.
 const CRITIQUE_LENSES = ['integration-coherence', 'evidence-quality', 'boring-alternative']
 const MAX_ROUNDS = 2
 let round = 0
-let allCritiques = []
+let lastNeedsWork = []
 
 while (round < MAX_ROUNDS) {
   phase('Critique')
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
-      `<stack_document>\n${draft}\n</stack_document>\n\n` +
-      `Review the tech-stack decision document above through the ${lens} lens only, against that lens's checklist. Be adversarial. List every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.` +
+      `Read the tech-stack decision document draft at ${draftStatus.path} and review it through the ${lens} lens only, against that lens's checklist. Be adversarial. List every checklist item that fails, including the small ones. The verdict rule, not your sense of importance, decides what happens next.` +
       OUTPUT_MECHANICS('lens, verdict, issues'),
       { agentType: 'stack-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)
-  allCritiques = critiques
 
   const needsWork = critiques.filter(c => c.verdict === 'needs_revision')
+  lastNeedsWork = needsWork
   if (needsWork.length === 0) {
     log('All lenses signed off - stack document is ready')
     break
@@ -327,16 +371,27 @@ while (round < MAX_ROUNDS) {
 
   phase('Revise')
   log(`Revising: ${needsWork.length}/${critiques.length} lenses flagged issues (round ${round})`)
-  draft = await agent(
-    `Revise this tech-stack decision document to address the following critique. Keep everything that already works and was not flagged. Append a Section 9 decision-log entry for every material change.\n\n` +
-    `Current draft:\n${draft}\n\n` +
+  draftStatus = await agent(
+    `Read the current tech-stack decision document at ${draftStatus.path} and revise it to address the following critique. Keep everything that already works and was not flagged. Append a Section 9 decision-log entry for every material change. Bump the version and overwrite the file at the same path. Do not touch the PRD again - it was already linked on the first pass.\n\n` +
     `Critique:\n${JSON.stringify(needsWork, null, 2)}`,
-    { agentType: 'stack-author', phase: 'Revise' }
+    { agentType: 'stack-author', phase: 'Revise', schema: DRAFT_STATUS_SCHEMA }
   )
 }
 
+// Cap openIssues rather than concatenating every lens's every issue across every round -
+// see prd-generator-v2's Changelog for why (a real run's uncapped equivalent hit 32.7KB
+// and got truncated on read).
+const MAX_OPEN_ISSUES = 15
+const allOpenIssues = lastNeedsWork.flatMap(c => c.issues.map(issue => `[${c.lens}] ${issue}`))
+const openIssues = allOpenIssues.slice(0, MAX_OPEN_ISSUES)
+if (allOpenIssues.length > MAX_OPEN_ISSUES) {
+  log(`${allOpenIssues.length} open issues found across all lenses - returning the first ${MAX_OPEN_ISSUES}; see ${draftStatus.path}'s critique history for the rest`)
+}
+
+// Return a summary-shaped result, not the full framing/critique/document blob: the document
+// already lives on disk at draftStatus.path, and the PRD (when one exists) already links to it.
 return {
-  framing,
+  productSummary: framing.productSummary,
   decisions: scored.map(s => ({
     area: s.area.area,
     winner: s.scoring.winner,
@@ -344,6 +399,11 @@ return {
     reversibility: s.scoring.reversibility,
     confidence: s.scoring.confidence,
   })),
-  critiques: allCritiques,
-  stackDocument: draft,
+  roundsRun: round,
+  openIssues,
+  openIssuesTotal: allOpenIssues.length,
+  stackPath: draftStatus.path,
+  stackVersion: draftStatus.version,
+  prdPath,
+  prdLinked,
 }

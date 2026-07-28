@@ -28,9 +28,12 @@ The other two work *against* code. This one works *before* it.
 ```
 /tdd-blueprint the checkout flow
 /tdd-blueprint docs/product-specs/team-invites-prd.md
+/tdd-blueprint docs/tasks/on-call-tracker/tasks.md | T3
 ```
 
-The command reads any matching PRD, architecture, and design documents it finds in the repo, runs the workflow, and writes six documents to `docs/testing/<slug>/`.
+The first two forms are **whole-target**: the command locates any matching PRD, architecture, and design documents in the repo and passes their **paths** (not their contents) to the workflow - `tdd-framer` has its own Read/Grep/Glob tools and reads them itself, so the command's own context never has to hold a copy of the whole document set just to relay it. It writes six documents to `docs/testing/<slug>/`.
+
+The third form is **task-scoped**, feeding from `/task-breakdown`'s output: given a `tasks.md` path and one task ID, `tdd-framer` reads only that row and the documents its `References` column names - not the whole PRD/architecture/design set - and derives exactly one behavior slice from it. Output lands at `docs/testing/<slug>/<taskId>/` instead. This is the cheap, repeatable way to get a blueprint for one row of a task index at a time rather than re-blueprinting an entire product on every task.
 
 It also runs from nothing but a sentence describing what is being built - the framer records the gaps as ambiguities instead of blocking, which is what makes the workflow independently smoke-testable.
 
@@ -92,6 +95,10 @@ Six documents under `docs/testing/<slug>/`:
 **Model selection.** Following `MODEL_SELECTION.md`: Strategy, Critique, and Sequence run on `opus` - suite architecture, adversarial verification, and build ordering are the judgment calls here. Frame, Specify, Revise, and Author stay on the session default, since they are breadth and drafting work.
 
 ## Smoke test
+
+**Post-smoke-test changes, not yet re-verified.** After the PASS run below, `tdd-doc-author` was changed from returning full document text to writing each document to disk itself and returning `{path, charCount, version}`; the spec inventory that used to be pasted into every one of 3 parallel critics' prompts on every round (and into all 6 parallel authors' prompts) is now written once per round to a scratch file (`tdd-scratch-writer`) and read from disk instead; `openIssues` is now capped at 15 with `openIssuesTotal`; and the final return is a compact summary instead of the full brief/specs/critiques/plan/documents. The pipeline shape, phase order, and round-cap behavior described below are unchanged and still evidenced by this run - the write/reference behavior and the new return shape are not.
+
+Also fixed since that run: in task-scoped mode, `docs/testing/<slug>/<taskId>/` now takes `<slug>` from the task index's own parent folder (`docs/tasks/<slug>/tasks.md`) instead of re-slugifying the framer's `brief.product` sentence - the same mismatch `design-system-foundation-v2` and `task-breakdown` had, which drifted from `docs/product-specs/`'s naming. Whole-target mode is unaffected (it still slugifies `brief.product`, same as before, since there is no task index to key off). Not yet re-verified end to end.
 
 Ran a real end-to-end smoke test via a headless `claude -p` session with its working directory set to `tdd-blueprint/` (so the Workflow tool resolves the custom `agentType`s against this directory's own `.claude/agents/`), invoking `/tdd-blueprint` with the trivial input: "A tiny command-line tool that converts a CSV file to JSON, with a --pretty flag for indented output."
 

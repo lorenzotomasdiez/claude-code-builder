@@ -70,8 +70,9 @@ Now: hitting either cap marks the slice `blocked` with a reason and the verifier
 - `.claude/agents/feature-implementer-lens-regression.md` - reviews regression risk only: what existing behavior could this break, is the tree coherent alone. Distilled from `experts/software-developer.md`'s code-review section.
 - `.claude/agents/feature-implementer-lens-quality.md` - reviews code quality only: readability, dead code, house idiom. Distilled from `experts/software-developer.md`.
 - `.claude/agents/feature-implementer-pr-writer.md` - synthesizes every slice's real outcome into one human-facing PR body, blocked work first.
-- `.claude/workflows/feature-implementer.js` - the orchestration script: read blueprint, then a sequential per-slice red -> green -> review loop with two separate round caps, then draft PR.
-- `.claude/commands/feature-implementer.md` - the `/feature-implementer [feature]` entry point. Locates the blueprint under `docs/testing/<slug>/`, passes both documents' contents, and surfaces blocked slices before the PR body. Does not push or open the PR itself.
+- `.claude/agents/feature-implementer-task-updater.md` - task-scoped runs only: makes the single targeted edit that marks a `task-breakdown` task index row done, and only ever runs when every slice shipped.
+- `.claude/workflows/feature-implementer.js` - the orchestration script: read blueprint, then a sequential per-slice red -> green -> review loop with two separate round caps, then draft PR, then (task-scoped runs only, and only if nothing is blocked) mark the task done.
+- `.claude/commands/feature-implementer.md` - the `/feature-implementer [feature]` or `/feature-implementer <tasks.md> | <task-id>` entry point. Locates the blueprint under `docs/testing/<slug>/` (or `docs/testing/<slug>/<task-id>/` for a task-scoped run), passes both documents' **paths** (the reader agent has its own Read/Grep/Glob tools), and surfaces blocked slices before the PR body. Does not push or open the PR itself.
 
 ## Usage
 
@@ -80,9 +81,18 @@ Now: hitting either cap marks the slice `blocked` with a reason and the verifier
 /feature-implementer health-endpoint
 ```
 
-The blueprint must exist first. If `docs/testing/<slug>/` has no `behavior-specs.md` and `tdd-plan.md`, the command stops and tells you to run `/tdd-blueprint` - it will not substitute a ticket or its own reading of the codebase.
+or, task-scoped, feeding from `/task-breakdown`'s output:
+
+```
+/tdd-blueprint docs/tasks/on-call-tracker/tasks.md | T3
+/feature-implementer docs/tasks/on-call-tracker/tasks.md | T3
+```
+
+The blueprint must exist first. If the matching folder has no `behavior-specs.md` and `tdd-plan.md`, the command stops and tells you to run `/tdd-blueprint` - it will not substitute a ticket or its own reading of the codebase. On a task-scoped run, once every slice ships, the workflow makes one targeted edit to `tasks.md` marking that task done; if any slice is blocked, `tasks.md` is left untouched on purpose, so "done" in the task index always means every slice actually shipped.
 
 This workflow makes real working-tree changes (the test author and developer agents hold `Write`/`Edit`) - it does not just describe what to change. Point it at a scratch or feature branch, review the resulting diff and PR body, and open the actual PR yourself.
+
+**Post-smoke-test changes, not yet re-verified**: the blueprint-reader's input contract changed from pasted document contents to file paths (`behaviorSpecsPath`/`tddPlanPath`); the task-scoped mode plus `feature-implementer-task-updater` are new; and the final return's `slices`/`blockedSlices`/`notGenuinelyRed` changed from full per-slice detail (every test, implementation, and review verbatim, growing with slice count) to a compact per-slice summary - the full detail still reaches the PR writer, it just no longer travels a second time in the workflow's own result. The PASS smoke test below predates all of this - it still proves the read-blueprint -> red -> green -> review -> PR pipeline and the two round caps, none of which changed, but not the new path-based input, the task-completion edit, or the capped return shape.
 
 ## Smoke test
 

@@ -38,7 +38,7 @@ Four workflows are architecture/panel-debate workflows almost end to end (`archi
 | `architecture-designer` | Clarify, Draft, Critique, Revise | Architecture-level judgment runs through the whole pipeline |
 | `prd-generator` | Critique | Adversarial quality-checklist review, same pattern as code-review's Verify |
 | `tdd-blueprint` | Strategy, Critique, Sequence | Suite architecture, adversarial spec-set review, and red-green ordering are the judgment calls; Frame, Specify, Revise, and Author stay Sonnet |
-| `feature-implementer`, `bug-hunter` (other phases), `test-backfill`, `dependency-upgrade`, `docs-sync`, `status-report`, `feedback-triage`, `qa-suite`, `qa-suite-pro`, `qa-suite-pro-computer-use` | none | Breadth/execution work throughout - Sonnet default is already correct, no override needed |
+| `feature-implementer`, `bug-hunter` (other phases), `test-backfill`, `dependency-upgrade`, `docs-sync`, `status-report`, `feedback-triage`, `qa-suite`, `qa-suite-pro` | none | Breadth/execution work throughout - Sonnet default is already correct, no override needed |
 
 ## Writing prompts for the Opus phases
 

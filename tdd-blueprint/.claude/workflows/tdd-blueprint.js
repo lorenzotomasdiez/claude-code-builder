@@ -145,6 +145,17 @@ const SPEC_SET_SCHEMA = {
   required: ['group', 'specs'],
 }
 
+const DOC_STATUS_SCHEMA = {
+  type: 'object',
+  properties: {
+    key: { type: 'string' },
+    path: { type: 'string' },
+    charCount: { type: 'number' },
+    version: { type: 'string' },
+  },
+  required: ['path', 'charCount', 'version'],
+}
+
 const CRITIQUE_SCHEMA = {
   type: 'object',
   properties: {
@@ -219,8 +230,20 @@ if (typeof input === 'string') {
   }
 }
 
+const taskId = (input && typeof input === 'object' && input.taskId) || null
+const tasksPath = (input && typeof input === 'object' && input.tasksPath) || null
+const taskScoped = Boolean(taskId && tasksPath)
+
 const sources = []
-if (typeof input === 'string') {
+if (taskScoped) {
+  sources.push({
+    label: 'task',
+    content:
+      `Task-scoped run. Task index: ${tasksPath}. Task ID: ${taskId}. Follow the task-scoped-mode instructions ` +
+      `in your own agent definition - read only this task's row and the documents its References column names, ` +
+      `and derive exactly one slice from it.`,
+  })
+} else if (typeof input === 'string') {
   sources.push({ label: 'request', content: input })
 } else if (input && typeof input === 'object') {
   for (const key of ['prd', 'architecture', 'design', 'target', 'notes']) {
@@ -230,9 +253,10 @@ if (typeof input === 'string') {
 if (!sources.length) {
   throw new Error(
     'Missing input. Call this workflow with args set to either a plain string (what is being built, ' +
-    'or a path to a PRD) or an object shaped ' +
+    'or a path to a PRD), an object shaped ' +
     '{ "prd": "...", "architecture": "...", "design": "...", "target": "...", "notes": "..." } ' +
-    'where each value is either document text or a path to read.'
+    'where each value is a path to read (or, for "target"/"notes", raw text), or an object shaped ' +
+    '{ "tasksPath": "path to a tasks.md", "taskId": "T3" } to scope the run to one task.'
   )
 }
 
@@ -309,22 +333,47 @@ const allSpecs = () => GROUPS
   .flatMap(g => specSets[g.key].specs.map(s => ({ ...s, group: g.key })))
 log(`Specified: ${allSpecs().length} spec(s) across ${Object.keys(specSets).length}/${GROUPS.length} group(s)`)
 
+function slugify(text) {
+  const slug = (text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+  return slug || 'untitled'
+}
+// Task-scoped runs take the product slug straight from the task index's own parent folder
+// (docs/tasks/<slug>/tasks.md) instead of re-slugifying the framer's product summary, so
+// docs/testing/<slug>/ always agrees with docs/tasks/<slug>/ and docs/qa-reports/<slug>/ -
+// the same fix applied to design-system-foundation-v2.js and task-breakdown.js.
+const taskProductSlugMatch = taskScoped && tasksPath.match(/([^/]+)\/tasks\.md$/i)
+const slug = taskScoped ? ((taskProductSlugMatch && taskProductSlugMatch[1]) || slugify(tasksPath)) : slugify(brief.product)
+const outDir = taskScoped ? `docs/testing/${slug}/${taskId}/` : `docs/testing/${slug}/`
+const specsScratchPath = `${outDir}_work/specs.json`
+
+// Persist the current spec inventory to one scratch file rather than pasting it into every one
+// of the parallel critic prompts below - each critic reads it from disk instead. Rewritten after
+// every round so it always reflects the latest revision before the next critique pass reads it.
+async function writeSpecsScratch() {
+  const written = await agent(
+    `Write this exact JSON content to ${specsScratchPath}, verbatim.\n\n${JSON.stringify(allSpecs(), null, 2)}`,
+    { agentType: 'tdd-scratch-writer', label: 'scratch:specs', phase: 'Specify' }
+  )
+  return written
+}
+await writeSpecsScratch()
+
 // --- Phase 4/5: Critique -> Revise loop (parallel lenses over the whole set, capped rounds) ---
 // The critique is a barrier on purpose: coverage, duplication, and layer-consistency defects
 // are only visible across the full spec set, never within one group.
 const CRITIQUE_LENSES = ['coverage-completeness', 'testability-determinism', 'tdd-usability']
 const MAX_ROUNDS = 2
+const MAX_OPEN_ISSUES = 15
 let round = 0
 let allCritiques = []
 
 while (round < MAX_ROUNDS) {
   phase('Critique')
-  const specInventory = JSON.stringify(allSpecs(), null, 2)
   const critiques = (await parallel(CRITIQUE_LENSES.map(lens => () =>
     agent(
-      `${briefContext}\n\n${strategyContext}\n\n<spec_set>\n${specInventory}\n</spec_set>\n\n` +
+      `${briefContext}\n\n${strategyContext}\n\nSpec set: read it from ${specsScratchPath} before reviewing.\n\n` +
       `<routing_groups>\n${GROUPS.map(g => g.key).join('\n')}\n</routing_groups>\n\n` +
-      `Review the whole spec set above through the ${lens} lens only. Be adversarial and list every checklist item that fails, including the small and uncertain ones. Route each issue to the owning group key from routing_groups; leave the group empty only when the fix is a missing spec that no existing group owns. The verdict rule, not your sense of importance, decides what happens next.`,
+      `Review the whole spec set through the ${lens} lens only. Be adversarial and list every checklist item that fails, including the small and uncertain ones. Route each issue to the owning group key from routing_groups; leave the group empty only when the fix is a missing spec that no existing group owns. The verdict rule, not your sense of importance, decides what happens next.`,
       { agentType: 'tdd-critic', label: `critique:${lens}`, phase: 'Critique', schema: CRITIQUE_SCHEMA, model: 'opus' }
     )
   ))).filter(Boolean)
@@ -402,12 +451,19 @@ while (round < MAX_ROUNDS) {
     }
     log(`Coverage sweep added ${added.length} spec(s)`)
   }
+
+  // Rewrite the scratch file so the next round's critics (or the Author phase, if this was
+  // the last round) read the revised set, not the one from before this round's fixes.
+  await writeSpecsScratch()
 }
 
 const finalSpecs = allSpecs()
 const openIssuesAtExit = allCritiques
   .filter(c => c.verdict === 'needs_revision')
   .flatMap(c => (c.issues || []).map(i => ({ lens: c.lens, ...i })))
+// Capped view for the final return only - the Author phase below still gets the full list,
+// since a doc-author genuinely needs every open issue to reflect it in the document.
+const openIssuesCapped = openIssuesAtExit.slice(0, MAX_OPEN_ISSUES)
 
 // --- Phase 6: Sequence (single agent, sequential, opus) ---
 phase('Sequence')
@@ -431,27 +487,42 @@ const DOC_TYPES = [
 ]
 const docContext =
   `${briefContext}\n\n${strategyContext}\n\n` +
-  `<spec_set>\n${JSON.stringify(finalSpecs, null, 2)}\n</spec_set>\n\n` +
+  `Spec set: read the current version from ${specsScratchPath} before writing.\n\n` +
   `<build_order_and_traceability>\n${JSON.stringify(plan, null, 2)}\n</build_order_and_traceability>\n\n` +
   `<open_critique_issues>\n${JSON.stringify(openIssuesAtExit, null, 2)}\n</open_critique_issues>`
 
 const authored = await parallel(DOC_TYPES.map(d => () =>
   agent(
-    `Write the "${d.key}" document ("${d.title}") of this TDD blueprint, following your instructions for that specific document. Carry the specs, IDs, thresholds, and gaps exactly as given - this document is code-free by design.\n\n${docContext}`,
-    { agentType: 'tdd-doc-author', label: `author:${d.key}`, phase: 'Author' }
+    `Write the "${d.key}" document ("${d.title}") of this TDD blueprint to ${outDir}${d.key}.md, following your instructions for that specific document. Carry the specs, IDs, thresholds, and gaps exactly as given - this document is code-free by design.\n\n${docContext}`,
+    { agentType: 'tdd-doc-author', label: `author:${d.key}`, phase: 'Author', schema: DOC_STATUS_SCHEMA }
   )
 ))
 const documents = DOC_TYPES
-  .map((d, i) => authored[i] ? { key: d.key, title: d.title, markdown: authored[i] } : null)
+  .map((d, i) => authored[i] ? { key: d.key, title: d.title, path: authored[i].path, charCount: authored[i].charCount, version: authored[i].version } : null)
   .filter(Boolean)
-log(`Authored ${documents.length}/${DOC_TYPES.length} document(s)`)
+log(`Authored ${documents.length}/${DOC_TYPES.length} document(s) to ${outDir}`)
+
+// Traceability rows that are fully covered add nothing a reader needs to act on - only the
+// gaps are actionable, so only the gaps travel in the return.
+const traceabilityGaps = (plan.traceability || []).filter(t => t.status !== 'covered')
 
 return {
-  brief,
-  strategy,
-  specs: finalSpecs,
-  critiques: allCritiques,
-  openIssues: openIssuesAtExit,
-  plan,
+  product: brief.product,
+  sliceCount: brief.slices.length,
+  specCount: finalSpecs.length,
+  strategyShape: strategy.shape,
+  roundsRun: round,
+  openIssues: openIssuesCapped,
+  openIssuesTotal: openIssuesAtExit.length,
+  buildStepCount: plan.buildOrder.length,
+  firstFailingSpecId: (plan.buildOrder[0] || {}).firstFailingSpecId,
+  coveredCount: (plan.traceability || []).length - traceabilityGaps.length,
+  traceabilityGaps,
+  orphanSpecs: plan.orphanSpecs || [],
+  ambiguities: brief.ambiguities || [],
+  documentsPath: outDir,
   documents,
+  taskScoped,
+  taskId,
+  tasksPath,
 }
