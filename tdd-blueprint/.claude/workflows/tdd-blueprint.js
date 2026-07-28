@@ -468,7 +468,7 @@ const openIssuesCapped = openIssuesAtExit.slice(0, MAX_OPEN_ISSUES)
 // --- Phase 6: Sequence (single agent, sequential, opus) ---
 phase('Sequence')
 const plan = await agent(
-  `${briefContext}\n\n${strategyContext}\n\n<spec_set>\n${JSON.stringify(finalSpecs, null, 2)}\n</spec_set>\n\n` +
+  `${briefContext}\n\n${strategyContext}\n\nSpec set: read the final reviewed version from ${specsScratchPath} before sequencing.\n\n` +
   `Produce the red-green build order and the traceability matrix. Place the cross-cutting non-functional specs deliberately rather than dumping them at the end, and report the coverage gaps honestly rather than smoothing them out.`,
   { agentType: 'tdd-sequencer', schema: PLAN_SCHEMA, model: 'opus' }
 )
