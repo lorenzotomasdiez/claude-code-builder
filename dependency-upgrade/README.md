@@ -140,3 +140,22 @@ retrofit's demonstrated value is making that refusal an explicit, instructed, au
 part of the output rather than an unprompted default - see `UNTRUSTED_INPUT_HANDLING.md`
 for the full transcript comparison and the honest limits of what this test does and does
 not prove.
+
+### Null-safety retrofit (see `NULL_SAFETY_AFTER_FANOUT.md`)
+
+The Assess phase's `const [breaking, security] = await parallel([...])` destructure was
+unguarded: `parallel()` resolves a failed lane to `null` rather than throwing, and the very
+next line read `breaking.riskLevel` / `security.recommendation` / `security.urgency`
+unconditionally - a transient failure in either the breaking-change analyst or the security
+advisor would have thrown `Cannot read properties of null` and crashed the whole run before
+the migration plan even started. This was the one confirmed-unsafe site found by an audit of
+all 30 `parallel()`/`pipeline()` call sites across the repo's 17 non-archive workflow
+packages (29 already handled it correctly). Fixed with `if (!breaking || !security) throw
+new Error(...)` naming which lane failed. Verified directly: `node --check` confirms the file
+still parses, `node scripts/validate-workflow.mjs dependency-upgrade` still passes, and
+running the guard clause against a fabricated `[null, security]` pair (the exact shape a
+real subagent failure produces) throws the new, specific error message instead of the old
+generic `TypeError`. A full end-to-end re-run was not repeated for this change since it only
+adds a guard on the failure path and does not touch the success path this package's existing
+smoke test above already covers - see `NULL_SAFETY_AFTER_FANOUT.md` for the full repo-wide
+audit and the honest limits of what this test does and does not prove.
