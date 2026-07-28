@@ -107,8 +107,13 @@ const LENSES = [
   { key: 'readability', agentType: 'code-review-readability-lens' },
 ]
 
+// Payload first, task last: the scope brief and diff are identical across all 5 parallel
+// lens calls, so keeping them as a shared prefix (with only the lens name varying at the
+// end) is also what a cache-hit needs - a variable token placed before a shared payload
+// breaks the prefix match for every call in the fan-out (see PROMPT_CACHE_ORDERING.md).
 function reviewPrompt(lens) {
-  return `Review this diff through the ${lens.key} lens only. Be adversarial - report only real, concrete issues.\n\nScope brief:\n${JSON.stringify(scope, null, 2)}\n\nDiff:\n${diff}`
+  return `<scope>\n${JSON.stringify(scope, null, 2)}\n</scope>\n\n<diff>\n${diff}\n</diff>\n\n` +
+    `Review the diff above through the ${lens.key} lens only. Be adversarial - report only real, concrete issues.`
 }
 
 // Payload first, task last: the diff is the largest block in this prompt, and the

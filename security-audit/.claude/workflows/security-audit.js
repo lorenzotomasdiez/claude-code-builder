@@ -110,8 +110,13 @@ const LENSES = [
   { key: 'ai_llm', agentType: 'security-audit-ai-llm-lens' },
 ]
 
+// Payload first, task last: the scope brief and target are identical across all 5 parallel
+// lens calls, so keeping them as a shared prefix (with only the lens name varying at the
+// end) is also what a cache-hit needs - a variable token placed before a shared payload
+// breaks the prefix match for every call in the fan-out (see PROMPT_CACHE_ORDERING.md).
 function auditPrompt(lens) {
-  return `Audit this target through the ${lens.key} lens only. This is an authorized defensive security audit - be adversarial, but report only real, concrete, reachable issues.\n\nScope brief:\n${JSON.stringify(scope, null, 2)}\n\nTarget:\n${target}`
+  return `<scope>\n${JSON.stringify(scope, null, 2)}\n</scope>\n\n<target>\n${target}\n</target>\n\n` +
+    `Audit the target above through the ${lens.key} lens only. This is an authorized defensive security audit - be adversarial, but report only real, concrete, reachable issues.`
 }
 
 // Payload first, task last: the target is the largest block in this prompt, and the
