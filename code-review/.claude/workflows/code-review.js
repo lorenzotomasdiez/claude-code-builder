@@ -36,7 +36,11 @@ const FINDING = {
     title: { type: 'string' },
     file: { type: 'string' },
     line: { type: 'number' },
-    severity: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+    severity: {
+      type: 'string',
+      enum: ['critical', 'high', 'medium', 'low'],
+      description: 'critical: causes data loss, a security breach, or a crash in the main path. high: wrong behavior a user can hit in normal use. medium: wrong behavior only under an edge case, or a real but contained quality problem. low: a nitpick that does not change behavior.',
+    },
     summary: { type: 'string' },
     failure_scenario: { type: 'string' },
   },
@@ -55,7 +59,11 @@ const FINDINGS_SCHEMA = {
 const VERDICT_SCHEMA = {
   type: 'object',
   properties: {
-    verdict: { type: 'string', enum: ['confirmed', 'rejected'] },
+    verdict: {
+      type: 'string',
+      enum: ['confirmed', 'rejected'],
+      description: 'confirmed: you traced the claim against the actual diff and the failure scenario really happens. rejected: the code already guards against it, the scenario is unreachable, or the finding is speculation not tied to a concrete input/state that triggers it.',
+    },
     reasoning: { type: 'string' },
   },
   required: ['verdict', 'reasoning'],

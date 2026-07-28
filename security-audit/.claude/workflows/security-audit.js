@@ -37,7 +37,11 @@ const FINDING = {
     title: { type: 'string' },
     file: { type: 'string' },
     line: { type: 'number' },
-    severity: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+    severity: {
+      type: 'string',
+      enum: ['critical', 'high', 'medium', 'low'],
+      description: 'critical: exploitable without authentication or gives cross-tenant/cross-user data access. high: exploitable by an authenticated user beyond their own data/permissions. medium: requires an unlikely precondition or leaks low-sensitivity data. low: defense-in-depth or hardening, not an exploitable path today.',
+    },
     owaspCategory: { type: 'string' },
     summary: { type: 'string' },
     failure_scenario: { type: 'string' },
@@ -57,7 +61,11 @@ const FINDINGS_SCHEMA = {
 const VERDICT_SCHEMA = {
   type: 'object',
   properties: {
-    verdict: { type: 'string', enum: ['confirmed', 'rejected'] },
+    verdict: {
+      type: 'string',
+      enum: ['confirmed', 'rejected'],
+      description: 'confirmed: you traced an actual exploit path through the real code with a concrete input/request that triggers it. rejected: an existing control (auth check, validation, sanitization) already blocks it, the path is unreachable, or the finding is speculative with no concrete trigger.',
+    },
     reasoning: { type: 'string' },
   },
   required: ['verdict', 'reasoning'],

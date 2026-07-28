@@ -128,3 +128,21 @@ This tool has not yet been run against a real, sizeable transcript folder
 (a genuine multi-file Workflow run with an oversized input or real
 duplication) - that is the next real-world test, once such a run's
 transcripts are available to point it at.
+
+### Re-verified after the schema-description retrofit (2026-07-28)
+
+**Status: PASS.** See `SCHEMA_DESIGN.md` for the repo-wide rationale. This
+workflow's four enum schema fields (`DISCOVERY_SCHEMA.files[].kind`,
+`TIMELINE_SCHEMA.readMode`, `TIMELINE_SCHEMA.events[].type`,
+`CRITIQUE_SCHEMA.findings[].severity`) now carry a `description` stating the
+calibration between their listed values, instead of just the bare enum.
+Re-run live via the Workflow tool against a fresh trivial one-line fixture
+folder (`/tmp/cbf-smoke-test-2/journal.jsonl`, a single fake JSON line,
+outside the repo). All 4 agents completed, Discover -> Narrate -> Critique
+-> Synthesize ran in order, all three schemas (now carrying the new
+`description` fields) validated on the first attempt with no SDK rejection
+or retry, and the enum values the subagents chose (`kind: "workflow-journal"`,
+`readMode: "full"`, event `type: "command_invoked"` / `"unclear"`) matched
+the new descriptions' calibration criteria. Confirms `description` on an
+`enum` schema field is accepted by the `agent()` call and does not break the
+pipeline's control flow or existing schema validation.
