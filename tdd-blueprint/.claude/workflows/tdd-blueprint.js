@@ -506,6 +506,9 @@ const plan = await agent(
   `Produce the red-green build order and the traceability matrix. Place the cross-cutting non-functional specs deliberately rather than dumping them at the end, and report the coverage gaps honestly rather than smoothing them out.`,
   { agentType: 'tdd-sequencer', schema: PLAN_SCHEMA, model: 'opus' }
 )
+if (!plan) {
+  throw new Error('Sequence phase failed: the sequencer returned no result (a transient subagent failure) - retry the run.')
+}
 const uncoveredCount = (plan.traceability || []).filter(t => t.status !== 'covered').length
 log(`Plan ready: ${plan.buildOrder.length} step(s), ${plan.traceability.length} traceability row(s), ${uncoveredCount} not fully covered, ${(plan.orphanSpecs || []).length} orphan spec(s)`)
 

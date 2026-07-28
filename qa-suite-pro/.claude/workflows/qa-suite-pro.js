@@ -245,6 +245,9 @@ while (round < MAX_ROUNDS) {
     `${gapNote}\n\nAfter writing, RUN the suite with the real command (${scope.runCommand || scope.testRunner}) and report actual results - never claim an unobserved pass. Report code defects a test reveals as findings; do not weaken tests or patch the code under test.\n\nScope:\n${JSON.stringify(scope, null, 2)}`,
     { agentType: 'qa-suite-pro-engineer', phase: 'Implement', schema: ENGINEER_SCHEMA }
   )
+  if (!engineering) {
+    throw new Error('Implement phase failed: the engineer returned no result (a transient subagent failure) - retry the run.')
+  }
   log(`Implement round ${round + 1}: ${(engineering.testsWritten || []).length} test file(s), executed=${engineering.executed}`)
 
   phase('Verify')
