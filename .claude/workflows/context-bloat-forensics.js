@@ -22,7 +22,11 @@ const DISCOVERY_SCHEMA = {
           sizeBytes: { type: 'number' },
           estimatedTokens: { type: 'number' },
           modifiedAt: { type: 'string' },
-          kind: { type: 'string', enum: ['workflow-journal', 'agent-transcript', 'session-transcript', 'unknown'] },
+          kind: {
+            type: 'string',
+            enum: ['workflow-journal', 'agent-transcript', 'session-transcript', 'unknown'],
+            description: 'workflow-journal: journal.jsonl from a Workflow tool run. agent-transcript: agent-<id>.jsonl for one spawned subagent. session-transcript: a raw top-level session transcript, not scoped to one agent. unknown: does not match a recognized name/shape - guess from content only if you already read it, otherwise leave as unknown.',
+          },
         },
         required: ['path', 'sizeBytes', 'kind'],
       },
@@ -35,13 +39,21 @@ const TIMELINE_SCHEMA = {
   type: 'object',
   properties: {
     file: { type: 'string' },
-    readMode: { type: 'string', enum: ['full', 'sampled'] },
+    readMode: {
+      type: 'string',
+      enum: ['full', 'sampled'],
+      description: 'full: you read the entire file. sampled: the file was too large to read in full so you read a representative subset (start/end/around key events) per your instructions.',
+    },
     events: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['command_invoked', 'agent_spawned', 'file_read', 'file_write', 'error', 'unclear', 'other'] },
+          type: {
+            type: 'string',
+            enum: ['command_invoked', 'agent_spawned', 'file_read', 'file_write', 'error', 'unclear', 'other'],
+            description: 'command_invoked: a tool/shell command ran. agent_spawned: a subagent was launched. file_read/file_write: a file was read or written. error: something failed or was rejected. unclear: the transcript does not make the event type identifiable. other: a real event that does not fit the other categories.',
+          },
           description: { type: 'string' },
           evidence: { type: 'string' },
         },
@@ -62,7 +74,11 @@ const CRITIQUE_SCHEMA = {
         type: 'object',
         properties: {
           category: { type: 'string' },
-          severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+          severity: {
+            type: 'string',
+            enum: ['high', 'medium', 'low'],
+            description: 'high: materially inflated token cost or a real risk of hitting context limits (e.g. an unbounded loop, a full file read that should have been a reference). medium: a real inefficiency but bounded in impact. low: a minor or one-off inefficiency not worth restructuring the workflow for.',
+          },
           summary: { type: 'string' },
           evidence: { type: 'string' },
           recommendation: { type: 'string' },
