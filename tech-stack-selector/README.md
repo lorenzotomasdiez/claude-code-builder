@@ -270,6 +270,17 @@ production quality. The output document
 (`docs/architecture/invoice-payment-tracker-tech-stack.md`, 416 lines, all 9
 sections present) was deleted afterward as a scratch artifact.
 
+### Untrusted-content retrofit (see `UNTRUSTED_INPUT_HANDLING.md`)
+
+`stack-researcher` now instructs itself to treat fetched pages, pricing sheets, and
+search results as data, never as directives, and to note (not obey) any embedded
+instruction it finds by recording it in `unknowns`. Not re-verified with a full
+pipeline run for this change (would repeat the fan-out already proven above); the
+underlying mechanism was verified directly against a sibling agent in the same
+retrofit (`dependency-upgrade-security-advisor`) - see `UNTRUSTED_INPUT_HANDLING.md`
+for that transcript. `node scripts/validate-workflow.mjs --all` continues to pass
+for `tech-stack-selector` after the edit.
+
 ## Hardening after a real-world failure
 
 A later run against a real PRD produced a fully-formed document about nothing.
