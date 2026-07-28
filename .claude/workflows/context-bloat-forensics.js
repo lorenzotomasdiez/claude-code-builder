@@ -96,7 +96,7 @@ if (!folder) {
 phase('Discover')
 const discovery = await agent(
   `Enumerate the transcript-like files under this folder, chronologically, with size metadata only - do not read file contents: ${folder}`,
-  { agentType: 'context-bloat-forensics-discoverer', schema: DISCOVERY_SCHEMA }
+  { agentType: 'context-bloat-forensics-discoverer', schema: DISCOVERY_SCHEMA, effort: 'low' }
 )
 log(`Found ${discovery.files.length} candidate file(s) under ${discovery.folder}`)
 
@@ -130,7 +130,7 @@ phase('Synthesize')
 const report = await agent(
   `Synthesize one consolidated report from these per-file timelines and findings, covering every transcript audited in folder ${discovery.folder}.\n\n` +
   JSON.stringify(valid.map(v => ({ file: v.file.path, timeline: v.timeline, findings: v.critique.findings })), null, 2),
-  { agentType: 'context-bloat-forensics-synthesizer' }
+  { agentType: 'context-bloat-forensics-synthesizer', effort: 'high' }
 )
 
 return { folder: discovery.folder, files: discovery.files, details: valid, report }

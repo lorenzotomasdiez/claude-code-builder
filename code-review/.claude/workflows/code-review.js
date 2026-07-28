@@ -86,7 +86,7 @@ const context = (input && typeof input === 'object' && input.context) || ''
 phase('Scope')
 const scope = await agent(
   `Scope this diff for a multi-lens code review. Context: ${context || 'none supplied'}.\n\nDiff:\n${diff}`,
-  { agentType: 'code-review-scoper', schema: SCOPE_SCHEMA }
+  { agentType: 'code-review-scoper', schema: SCOPE_SCHEMA, effort: 'low' }
 )
 log(`Scope ready: ${scope.filesTouched.length} file(s) touched, ${scope.riskAreas.length} risk area(s) flagged`)
 
@@ -116,7 +116,7 @@ const verifiedByLens = await pipeline(
   (review, lens) => {
     if (!review || !review.findings || review.findings.length === 0) return []
     return parallel(review.findings.map(f => () =>
-      agent(verifyPrompt(f, lens.key), { agentType: 'code-review-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'opus' })
+      agent(verifyPrompt(f, lens.key), { agentType: 'code-review-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'opus', effort: 'xhigh' })
         .then(v => ({ ...f, lens: lens.key, verdict: v }))
     ))
   }

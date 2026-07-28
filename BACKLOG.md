@@ -52,3 +52,4 @@ You may add workflows beyond this list when you judge them valuable; if you do, 
 - Favor the orchestration patterns that fit the task: parallel lenses for review and research, adversarial verify to kill false findings, loop-until-clean for revise cycles, pipeline for per-item independent stages. Do not force a linear chain where a fan-out is more honest.
 - If a role you need is not in `experts/`, add the file there first, then build the workflow.
 - Prefer finishing and smoke-testing one workflow over starting the next.
+- `EFFORT_SELECTION.md` documents a per-phase `opts.effort` rule (mirroring `MODEL_SELECTION.md`'s per-phase `opts.model` rule), retrofitted so far into `context-bloat-forensics`, `code-review`, and `security-audit`. A future run should apply it to the remaining workflow scripts: `effort: 'low'` on scoping/discovery phases, `effort: 'high'`/`'xhigh'` on phases already pinned to `model: 'opus'`.

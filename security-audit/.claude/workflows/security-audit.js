@@ -89,7 +89,7 @@ const context = (input && typeof input === 'object' && input.context) || ''
 phase('Scope')
 const scope = await agent(
   `Map the attack surface for this authorized security audit. Context: ${context || 'none supplied'}.\n\nTarget:\n${target}`,
-  { agentType: 'security-audit-scoper', schema: SCOPE_SCHEMA }
+  { agentType: 'security-audit-scoper', schema: SCOPE_SCHEMA, effort: 'low' }
 )
 log(`Scope ready: ${scope.entryPoints.length} entry point(s), ${(scope.trustBoundaries || []).length} trust boundary note(s)`)
 
@@ -119,7 +119,7 @@ const verifiedByLens = await pipeline(
   (review, lens) => {
     if (!review || !review.findings || review.findings.length === 0) return []
     return parallel(review.findings.map(f => () =>
-      agent(verifyPrompt(f, lens.key), { agentType: 'security-audit-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'opus' })
+      agent(verifyPrompt(f, lens.key), { agentType: 'security-audit-verifier', label: `verify:${lens.key}:${f.title}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'opus', effort: 'xhigh' })
         .then(v => ({ ...f, lens: lens.key, verdict: v }))
     ))
   }

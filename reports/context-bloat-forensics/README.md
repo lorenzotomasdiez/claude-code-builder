@@ -103,6 +103,20 @@ not a wiring gap. The synthesizer correctly refused to invent a finding to
 fill the section and instead recorded an out-of-scope observation as an open
 question rather than a finding, matching its "do not invent findings" rule.
 
+### Re-verified after the effort-selection retrofit (2026-07-28)
+
+**Status: PASS.** See `EFFORT_SELECTION.md` for the repo-wide rationale. This
+workflow's Discover phase now sets `effort: 'low'` (mechanical file
+enumeration) and its Synthesize phase now sets `effort: 'high'` (the one
+barrier phase, deduplicating findings across every audited file). Re-run
+live against a trivial one-line fixture folder
+(`/tmp/cbf-smoke-test/journal.jsonl`, a single fake JSON line, outside the
+repo). All 4 agents completed, Discover -> Narrate -> Critique -> Synthesize
+all ran in order, all three schemas validated, and the synthesizer produced
+a well-formed report correctly noting the fixture had no real activity to
+find bloat in. Confirms `opts.effort` is accepted by the `agent()` call and
+does not break the pipeline's control flow or schema validation.
+
 One caveat worth recording for future maintainers: the first attempt at this
 smoke test failed with `agent type 'context-bloat-forensics-discoverer' not
 found` - not a bug in the wiring, but because custom subagents defined in
