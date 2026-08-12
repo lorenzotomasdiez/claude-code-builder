@@ -27,7 +27,7 @@ frame (framer, opus)     understand the task, derive the branch name from this
 branch (probe)           git checkout -b, after branch_free
    |
    v
-plan (planner, opus)     write plan.md into the handoff dir
+plan (planner, opus)     write specs/<slug>-plan.md
    |--> gate             exists, min_bytes, no_placeholder
    v
 commit_plan (probe)      COMMIT 1/3 - the planner's words, about the plan
@@ -119,6 +119,13 @@ Comparing **changesets** rather than watching writes is what catches a reversion
 
 A breach is **not** a gate violation: the write already happened and no re-prompt undoes it, so the phase dies and every path is named.
 
+### A repo with no test suite does not get an accepted run
+
+If the framer finds no test command, the run keeps going but `accepted` is `false`, the code is never committed, and the reason says so plainly.
+
+That is deliberate and it follows from everything above. Nothing in a suiteless run proved the code runs, and treating "there was nothing to check" as "it checked out" is the exact failure this package exists to prevent.
+You still get the plan committed, the code sitting in the working tree, and the branch to inspect it on.
+
 ### Acceptance is a separate question from phase success
 
 A phase that ran the suite and saw it red **did its job**: the phase succeeds while the run must not.
@@ -141,7 +148,7 @@ One more worth naming: `gated-documenter` is distilled from `experts/software-de
 | `.claude/workflows/gated-sdlc.js` | The orchestration: schemas, gates, the probe helper, the write boundary, the chain, the acceptance verdict. |
 | `.claude/commands/gated-sdlc.md` | The `/gated-sdlc` entry point, including what the workflow does to your repo. |
 | `.claude/agents/gated-framer.md` | Understands the task and names the branch from this repo's real conventions. Plans nothing. |
-| `.claude/agents/gated-planner.md` | Writes `plan.md`. Has `Write` but no `Edit` and no `Bash`. |
+| `.claude/agents/gated-planner.md` | Writes the plan to `specs/<slug>-plan.md`. Has `Write` but no `Edit` and no `Bash`. |
 | `.claude/agents/gated-builder.md` | The only agent that writes production code. Called in three modes: build, fix, revise. |
 | `.claude/agents/gated-reviewer.md` | Judges the code on disk against `plan.md`. Fixes nothing. |
 | `.claude/agents/gated-documenter.md` | Writes up what the captured diff shows, and only that. |

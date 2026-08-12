@@ -432,6 +432,11 @@ const record = (name, owner, status, error = '') => phaseLog.push({ name, owner,
 phase('Preflight')
 const pre = await probe([
   { type: 'exits_zero', id: 'git repo', command: 'git rev-parse --git-dir' },
+  // Created here, not where it is first written to. The planner is told to put
+  // plan.md in it and the plan commit stages that path, so the directory
+  // existing is on the critical path - too load-bearing to leave to whatever
+  // the Write tool happens to do about missing parents.
+  { type: 'run', id: 'handoff dir', command: `mkdir -p ${shq(HANDOFF)}` },
   { type: 'capture', id: 'branch', command: 'git rev-parse --abbrev-ref HEAD' },
   { type: 'capture', id: 'baseline', command: 'git rev-parse HEAD' },
   { type: 'capture', id: 'tree', command: TREE_CMD },
@@ -524,9 +529,12 @@ try {
   phase('Plan')
   plan = await gated('plan',
     phaseAgent('gated-planner', 'opus', PLAN_SCHEMA, frame,
-      `Write the plan to ${HANDOFF}/plan.md. That file is the plan; the envelope only announces it. ` +
-      'The reviewer will use it as the spec, so a requirement the plan does not name is a requirement ' +
-      'nobody will verify.'),
+      `Write the plan to \`specs/${frame.slug}-plan.md\` and list that exact path in \`artifacts\`. ` +
+      'That file is the plan; the envelope only announces it. It gets committed, which is why it goes ' +
+      `in \`specs/\` and not in the handoff dir - the handoff dir is this run's scratch space and its ` +
+      'contents are not meant to outlive the run.\n\n' +
+      'The reviewer will use this file as its spec, so a requirement the plan does not name is a ' +
+      'requirement nobody will verify.'),
     (c) => [
       { type: 'no_placeholder', fields: ['summary'] },
       ...eachPath('exists', 'the plan is on disk', c.artifacts),
@@ -549,7 +557,7 @@ try {
   ]
   build = await gated('build',
     phaseAgent('gated-builder', 'sonnet', BUILD_SCHEMA, plan,
-      `Your spec is ${HANDOFF}/plan.md. Read it in full before writing anything.\n\n` +
+      `Your spec is \`${plan.artifacts[0]}\`. Read it in full before writing anything.\n\n` +
       'Report every file you changed in `changedFiles`. That verified list becomes the commit\'s file ' +
       'list: a file you touched but did not declare will not be committed.'),
     buildChecks)
@@ -580,8 +588,12 @@ try {
       record(`fix_${i}`, 'gated-builder', 'success')
     }
   } else {
-    test = { passed: true, exitCode: 0, output: 'no test command: this repo has no suite to run' }
-    log('no test command - the run cannot prove the code works, only that it was reviewed')
+    // No suite means nothing in this run can prove the code runs. Marking that
+    // as passed would be the exact failure this package exists to prevent: an
+    // unverified claim treated as a verified one, and `accepted: true` on a
+    // build nobody executed. Unverified is failed, including here.
+    test = { passed: false, exitCode: null, noSuite: true, output: 'this repo has no test command' }
+    log('no test command - the code cannot be verified, so it will not be committed')
   }
 
   // ── Review, and the bounded revision loop ──────────────────────────────────
@@ -592,7 +604,7 @@ try {
     phase('Review')
     review = await gated(`review_${i}`,
       phaseAgent('gated-reviewer', 'opus', REVIEW_SCHEMA, build,
-        `Your spec is ${HANDOFF}/plan.md. Judge the code on disk, never the builder's summary of it: ` +
+        `Your spec is \`${plan.artifacts[0]}\`. Judge the code on disk, never the builder's summary of it: ` +
         `start from its changedFiles, read them, and use \`git diff\` for anything the envelope did not mention.`),
       () => [{ type: 'verdict_consistent' }])
     await settle('gated-reviewer', `review_${i}`)
@@ -675,7 +687,11 @@ try {
 function verdict(accepted, thrown = '') {
   const reasons = [
     thrown,
-    !thrown && test && !test.passed && `the suite never came back green (exit ${test.exitCode})`,
+    !thrown && test && test.noSuite &&
+      'this repo has no test command, so nothing in the run proved the code runs. ' +
+      'The plan is committed and the code is in the working tree, unverified and uncommitted, ' +
+      'for you to check by hand',
+    !thrown && test && !test.passed && !test.noSuite && `the suite never came back green (exit ${test.exitCode})`,
     !thrown && review && !review.approved && `the review never approved: ${(review.blocking || []).join(' · ')}`,
     !thrown && !review && 'the run never reached a review',
   ].filter(Boolean)
