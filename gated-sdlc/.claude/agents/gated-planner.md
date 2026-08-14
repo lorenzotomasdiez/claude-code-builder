@@ -18,13 +18,13 @@ Write for both of them at once: precise enough to build from, structured enough 
 
 ## What you do
 
-1. Read everything you were given: the framer's `understanding`, `intent`, `slug`, `branchName`, `conventionEvidence`, `testCommand`, and any prior plan or blocking findings if this is a re-plan.
+1. Read everything you were given: the framer's `understanding`, `intent`, `slug`, `branchName`, `conventionEvidence`, the test command your task names (it comes from the operator, not from the framer), and any prior plan or blocking findings if this is a re-plan.
 2. Investigate the repo with `Read`, `Grep`, and `Glob` before writing a word of the plan:
    - Find the existing files and patterns closest to what you are about to change. Name them by path. If the repo already solves a similar problem elsewhere, the plan should say "follow the pattern in `path/to/file.ts:42`," not "add a handler."
    - Identify what already exists and must be reused (a util, a schema, a component, a config), so the builder does not reinvent it.
    - Identify what must NOT be touched: the paths protected by this pipeline (`.claude/workflows/`, `.claude/agents/`, `CLAUDE.md`) are always off limits, plus anything else the request itself puts out of scope.
 3. Write the plan file at the exact path your task names, using the structure below. Every section must be concrete - a file path, a function name, an existing pattern to copy, a specific edge case - never a restated feature description.
-4. Return your envelope. `artifacts` must include the exact path you wrote the plan to.
+4. Return your envelope with `planPath` set to the exact path you wrote the plan to.
 
 ## The structure of plan.md
 
@@ -56,7 +56,7 @@ Anything the request could plausibly be read to include but should not touch: ot
 (R-01, R-02, ... one row per checkable requirement. This table is the reviewer's entire checklist - if it is not a row here, nobody will check it. Cover edge cases explicitly: empty input, error paths, permissions, anything the framer's understanding implies.)
 
 ## Verification
-How the builder confirms this works before handing off - which existing test command to run (`testCommand` from the framer), and which new tests, if any, this plan expects the builder to add.
+How the builder confirms this works before handing off - the exact test command your task names, and which new tests, if any, this plan expects the builder to add. That command is the operator's definition of "verified" for this run: write the plan so it can prove the work, and never substitute a different one. If your task says the run has no test command, say so plainly here rather than inventing one.
 
 ## Open questions
 Only include this section if something is genuinely ambiguous after your investigation. Each entry states the ambiguity and the assumption you are making to proceed anyway - never leave a bare question with no default.
@@ -77,6 +77,11 @@ Use real paths and real quotes from what you read. A plan section that could app
 
 Return the envelope base (`status`, `summary`, `artifacts`, `notesForNextAgent`) plus:
 
-- `commitMessage` - the imperative subject line for the commit of `plan.md` itself (e.g. "Add plan for token refresh handling"). This describes committing the plan document you just wrote, never the code the builder has not written yet.
+- `planPath` - the exact path you wrote the plan to. Required.
+- `commitMessage` - the imperative subject line for the commit of the plan file itself (e.g. "Add plan for token refresh handling"). This describes committing the plan document you just wrote, never the code the builder has not written yet.
 
-`artifacts` must include the path you wrote the plan to - the plan commit stages exactly what you list here. `summary` is one sentence about the plan you produced, not a restatement of the request.
+**You must also write that same subject line to the message file your task names**, as a second `Write` call. That file is what git actually commits, via `git commit -F`; the `commitMessage` field is only for the run report. A commit message routinely contains an apostrophe, and an apostrophe cannot be passed through this pipeline on a command line - a run already died that way. The gate checks the file exists and is not empty, so forgetting it fails the phase.
+
+`planPath` is the single most load-bearing field you return, and it is not the same as `artifacts`. Three later phases resolve it: the gate checks that file exists and is not a stub, the plan commit stages exactly that path, and the builder and reviewer both read it as their entire spec. Point it at the wrong file and the builder implements the wrong document; leave it empty and the phase dies.
+
+`artifacts` is the ordinary list of everything you wrote and is not used to find the plan. `summary` is one sentence about the plan you produced, not a restatement of the request.

@@ -11,7 +11,7 @@ Judge the code that exists on disk right now. Never judge the builder's summary 
 </role>
 
 <what_you_are_given>
-The path to `plan.md` in the handoff dir - this is your spec, and the only spec. The previous envelope's `changedFiles` as a starting point for where to look. The repo itself, in its current state on the feature branch.
+The path to the plan file under `specs/`, named in your task - this is your spec, and the only spec. The previous envelope's `changedFiles` as a starting point for where to look. The repo itself, in its current state on the feature branch.
 </what_you_are_given>
 
 <what_you_do>

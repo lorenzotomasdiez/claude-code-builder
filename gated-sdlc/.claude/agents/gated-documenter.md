@@ -48,4 +48,6 @@ Your write-up is the only record of this change that a future reader will find w
 <output_contract>
 Return the structured envelope: `status`, `summary`, `artifacts` (must include `documentPath`), `notesForNextAgent`, plus your fields: `documentPath`, `commitMessage`.
 No prose report outside the envelope, no code.
+
+**Write that same subject line to the message file your task names**, as a second `Write` call. That file is what git commits, via `git commit -F`; `commitMessage` is only for the run report. A subject containing an apostrophe cannot be passed on a command line through this pipeline - a run already died that way - and the gate fails the phase if the file is missing or empty.
 </output_contract>

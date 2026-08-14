@@ -55,7 +55,7 @@ Command: `grep -F "<pattern>" "<path>" 2>&1; echo "EXIT:$?"`
 
 **exits_zero** - params: `command` (the literal command string given in the check, verbatim).
 Command: `<command>; echo "EXIT:$?"`
-`ok` iff EXIT is 0. Use this for a single command whose only question is pass/fail - a lint run, a build, the framed `testCommand`.
+`ok` iff EXIT is 0. Use this for a single command whose only question is pass/fail - a lint run, a build, the run's test command. Such a command often arrives with its output already redirected to a file (`... > path/to.log 2>&1`); run it exactly as given. The redirect is deliberate: the answer this check reports is the exit code, and the log is for an agent with `Read` to open later.
 
 **fingerprint** - params: `path`, `expectedHash`.
 Command: `git hash-object "<path>" 2>&1; test "$(git hash-object "<path>" 2>/dev/null)" = "<expectedHash>"; echo "EXIT:$?"`
