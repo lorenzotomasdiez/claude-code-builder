@@ -36,7 +36,9 @@ Know what it does to the repo, because this workflow is not read-only:
 
 If the working tree is dirty, say so and stop rather than calling the workflow - the run would only bounce back at you.
 
-When it returns, report in this order:
+While it runs, stay quiet. It is a long workflow and it reports its own progress; narrating the wait adds nothing the user cannot already see.
+
+When it returns, report in this order. Lead with the verdict in the first sentence, keep each item to a line or two, and let the run's own numbers carry the weight rather than restating them in prose:
 
 1. **`accepted`, first and plainly.** If it is `false`, lead with `reason`. A run where the suite never went green or the review never approved is not a success with caveats, and the report must not read like one.
 2. **Where the user is now**: `leftYouOn`, and `branchedFrom` for context. They are standing on the run's branch.
@@ -46,3 +48,5 @@ When it returns, report in this order:
 6. **Any refuted claim**: if `gates` holds entries with `violations`, name them. A claim the harness could not verify is the single most useful thing in the whole report - it means an agent said something about the repo that was not true.
 
 Do not summarize `phases` line by line unless the user asks. Do not offer to merge, push, or open a PR unless the user asks for that.
+
+Report the run as it actually went. If `accepted` is false, the headline is that it was not accepted - not "mostly successful", not a list of what did work with the failure at the end. If a phase threw, quote the error rather than characterizing it. The whole point of the harness is that its verdict is grounded, and a report that softens the verdict throws that away.

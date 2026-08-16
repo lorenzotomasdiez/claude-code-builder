@@ -271,6 +271,18 @@ Redirecting the suite's output to a file also keeps a large test log out of the 
 
 **PASSED, with fixes landed since that are not re-verified.** Six real runs on record, in `my-rag`. Runs 3 and 5 completed; runs 1, 2, 4 and 6 each exposed a defect, and all six are kept below, because what the failures exposed is why the passes work. The most recent run is the one to read first.
 
+### The prompt pass
+
+All six agent definitions were rewritten in one pass, after eleven runs had shown where they were thin. The change that carries the most weight is `<examples>`, which none of them had: a correct output beside an incorrect one and a `<why>` explaining the difference, built from failures that actually happened.
+
+The reviewer's example rules on three requirements, one of them unconfirmable, and its `<why>` points out what the correct version does **not** do - it stays `status: 'success'` while rejecting the code. The builder's covers a move, a deletion, and a `docs/` file the plan wrongly asked for, all in one envelope, and explains that `in_diff` would have passed on both removals so omitting them bought nothing. The planner's contrasts a rulable requirement row against a vague one, and catches something the prose never said: the vague row collapses the happy path and the error path into one, so a build shipping only the happy path still marks it met.
+
+The builder also gained `<solve_the_problem_not_the_test>` - special-casing a test's input, branching on `NODE_ENV`, swallowing the exception the test exists to surface, sleeping against a real race - which is the list of ways a suite goes green while proving nothing.
+
+Two things fixed on review of that pass. `.claude/commands/` was missing from the planner's protected paths while being present in the script's `PROTECTED`, which was a real inconsistency rather than a wording problem. And the `docs/` rule had reached four separate statements in the planner; it is now one line in the template, one rule, one-line evidence, and one checklist item, each doing a different job.
+
+**Scale is now stated but not solved.** `<one_builder_one_pass>` tells the planner what its plan actually costs - one builder, one context that never resets, and the measured 39-requirement plan that ran 85 minutes across 647 tool calls to a 644,000-token context - and asks it to name a split in **Open questions** when the work does not fit. It deliberately sets no threshold, because nobody has established where the cliff is. The real answer is structural: slicing the build phase so each builder starts fresh, which is recorded as open below rather than approximated in a prompt.
+
 ### What five more runs cost, and the three fixes they bought
 
 Eleven runs on record now, not six. Two of the unrecorded ones passed, including the first pass in a **production repo** (`divann.com`, three real GitHub issues, three commits, 158 minutes). Three failed for three different reasons, and only one was a defect.

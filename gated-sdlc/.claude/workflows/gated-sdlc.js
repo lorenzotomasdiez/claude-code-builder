@@ -297,7 +297,9 @@ async function probe(checks, label, opts = {}) {
     'Run exactly these checks against the repo and report what you observed.\n' +
     'Do not fix anything. Do not interpret. Do not run anything you were not given.\n' +
     '`ok` comes from the exit code or the stat, never from an impression.\n' +
-    '`observed` is what the command actually printed, verbatim.\n\n' +
+    '`observed` is what the command actually printed, verbatim.\n' +
+    'Where a check carries a literal `command`, run that string character for character.\n' +
+    `Return exactly ${checks.length} result(s), one per check below, with each \`id\` copied across unchanged.\n\n` +
     JSON.stringify(checks, null, 2),
     {
       label: `probe:${label}`,
@@ -942,9 +944,14 @@ try {
   ]
   build = remember(await gated('build', 'gated-builder',
     phaseAgent('gated-builder', 'sonnet', BUILD_SCHEMA, plan,
-      `Your spec is \`${plan.planPath}\`. Read it in full before writing anything.\n\n` +
-      'Report every file you changed in `changedFiles`. That verified list becomes part of the ' +
-      'commit\'s file list: a file you touched but did not declare will not be committed.\n\n' +
+      `## Mode: build\n\nThis is the first pass. Nothing exists yet that this plan describes.\n\n` +
+      `Your spec is \`${plan.planPath}\`. Read it in full before writing anything, and implement ` +
+      'exactly what it asks for - no adjacent cleanup, no extra feature, nothing the requirements ' +
+      'table does not name.\n\n' +
+      'Report every file you changed in `changedFiles`, including deletions and both halves of any ' +
+      'move. That verified list becomes part of the commit\'s file list: a file you touched but did ' +
+      'not declare will not be committed, and a deletion you leave out keeps the file you just ' +
+      'moved away from.\n\n' +
       writeMessageInstruction('commit_build', 'the code change as a whole') +
       '\nThis one subject covers the finished feature, including any repair a later phase makes to ' +
       'it, so write it about the change you were asked for rather than about what you did last.'),
@@ -983,10 +990,13 @@ try {
       phase('Build')
       build = remember(await gated(`fix_${i}`, 'gated-builder',
         phaseAgent('gated-builder', 'sonnet', BUILD_SCHEMA, build,
-          `The suite failed: \`${testCommand}\` exited non-zero.\n\n` +
+          `## Mode: fix\n\nThe suite failed: \`${testCommand}\` exited non-zero.\n\n` +
           `Its complete output is at \`${logPath}\`. Read that file in full before you change ` +
           'anything - it is the real log, not a summary, and a suite that reports five failures gave ' +
           'you five things to fix. Address every failure it reports, not just the first.\n\n' +
+          `Re-read \`${plan.planPath}\` as well: it is still the contract for what this feature is ` +
+          'supposed to do, and a repair that drifts from it is a new defect. Fix the behavior each ' +
+          'failure describes - never the test, and never by special-casing the input it uses.\n\n' +
           `Report only what THIS repair touched in \`changedFiles\`; the workflow already remembers ` +
           `everything the earlier calls declared. Leave \`${msgPathFor('commit_build')}\` alone - the ` +
           'commit subject describes the whole change, and a repair is part of it, not a replacement for it.'),
@@ -1011,7 +1021,13 @@ try {
     review = await gated(`review_${i}`, 'gated-reviewer',
       phaseAgent('gated-reviewer', 'opus', REVIEW_SCHEMA, build,
         `Your spec is \`${plan.planPath}\`. Judge the code on disk, never the builder's summary of it: ` +
-        `start from its changedFiles, read them, and use \`git diff\` for anything the envelope did not mention.`),
+        `start from its changedFiles, read them, and use \`git diff\` for anything the envelope did not mention.\n\n` +
+        'Rule on every requirement the plan states, with a `file:line` for each one you find and a ' +
+        'precise statement of what is absent for each one you do not. A requirement you could not ' +
+        'confirm is `met: false`, never waved through.\n\n' +
+        'Reaching a verdict at all - however negative - is `status: \'success\'`. Reject the code with ' +
+        '`approved: false` and blocking items, which routes to a revision round. `status: \'fail\'` ' +
+        'means you could not review, and it ends the run with the code uncommitted.'),
       () => [{ type: 'verdict_consistent' }])
     record(`review_${i}`, 'gated-reviewer', 'success')
 
@@ -1021,7 +1037,10 @@ try {
     phase('Build')
     build = remember(await gated(`revise_${i}`, 'gated-builder',
       phaseAgent('gated-builder', 'sonnet', BUILD_SCHEMA, review,
-        `The reviewer blocked this build. Close every one of these, and nothing else:\n\n- ${review.blocking.join('\n- ')}\n\n` +
+        `## Mode: revise\n\nThe reviewer blocked this build. Close every one of these, and nothing else:\n\n- ${review.blocking.join('\n- ')}\n\n` +
+        `Each item names a gap against \`${plan.planPath}\`, which is still the contract. Closing all ` +
+        'of them is what stands between this run and acceptance, so a revision that leaves one open ' +
+        'while tidying something else spends a round for nothing.\n\n' +
         'Report only what THIS revision touched in `changedFiles`; the workflow already remembers ' +
         `everything the earlier calls declared. Leave \`${msgPathFor('commit_build')}\` alone - the ` +
         'commit subject describes the whole change, and a revision is part of it, not a replacement for it.'),
