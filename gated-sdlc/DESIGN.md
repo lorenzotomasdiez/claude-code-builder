@@ -88,7 +88,7 @@ The handoff dir is passed in the prompt. It is the only place agents hand work t
 Gates verify the claim's own words after the fact. They never guess and they never judge quality.
 
 **Tier 0 - pure**, runs in the workflow script, costs nothing:
-`verdict_consistent`, `counts_match`, `slug_shape`, `branch_matches_intent`, `no_placeholder`.
+`verdict_consistent`, `counts_match`, `slug_shape`, `branch_matches_intent`, `no_placeholder`, `shell_safe`, `docs_not_yours`.
 
 **Tier 1 - world**, batched into one `gated-probe` call per phase:
 `exists`, `non_empty`, `min_bytes`, `in_diff`, `branch_free`, `parses`, `contains`, `exits_zero`, `fingerprint`, `run`, `capture`.
@@ -99,7 +99,11 @@ The **invocation for every named world check lives in `gated-probe.md`**, not in
 
 The vocabulary is **closed**. The hole it guards against is the probe inventing a command, not code authoring one: "a known command is code, not a judgement call" is the whole point.
 
-**`exists` is never the right check for a changed file.** A deletion is a change and a deleted file does not exist, so `exists` refutes a true claim about any move or removal. `in_diff` asks git the actual question - "is this path really in the change set" - and git reports deletions, additions and modifications alike. Run 2 died on this: in a single gate, `in_diff` passed on a moved-away path while `exists` failed on it, and the builder had no legal answer, because dropping the deleted path would have left the removal unstaged and kept the file it had just moved away from. `exists` belongs only on a document a phase promises to have WRITTEN - `planPath`, `documentPath` - never on `changedFiles`.
+**`exists` is never the right check for a changed file.** A deletion is a change and a deleted file does not exist, so `exists` refutes a true claim about any move or removal. `in_diff` asks git the actual question - "is this path really in the change set" - and git reports deletions, additions and modifications alike. Run 2 died on this: in a single gate, `in_diff` passed on a moved-away path while `exists` failed on it, and the builder had no legal answer, because dropping the deleted path would have left the removal unstaged and kept the file it had just moved away from. `exists` belongs only on a document a phase promises to have written AND that nothing is about to commit - `planPath`, and nothing else.
+
+Run 6 took the last exception away. `documentPath` had `exists` on it, and a run died with every check green: the plan had asked the builder for the phase write-up, so it shipped inside the code commit, and by the time the document gate ran the file existed and was 6811 bytes - both answers correctly true - while `git commit` found an empty index and reported "nothing to commit, working tree clean". The two failures are one mistake in opposite directions. **`exists` answers for the disk; `in_diff` answers for the repo.** Anything one step away from a commit gets the second question.
+
+**A pure check corrects; the write boundary executes.** The same run raised the obvious alternative - forbid the builder from writing `docs/` at all - and it is the wrong instrument. A boundary breach is fatal by design: the phase dies, the run ends, no retry. But that builder was obeying its plan, which had listed the write-up among the files to produce, so a ban converts the most benign cause into the most expensive outcome, and takes legitimate doc updates with it. `docs_not_yours` refutes the DECLARATION instead, which costs one cold retry and a corrected `changedFiles`. Reserve the boundary for what must never happen; use a gate for what merely went wrong.
 
 Two check names mean something specific and are easy to misread:
 

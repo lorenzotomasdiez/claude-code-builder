@@ -14,11 +14,11 @@ Three statuses, defined the way an engineer actually means them:
 
 Nothing here is hidden or rounded up. A workflow with real, working orchestration and one unverified fix is marked "needs review," not "solid" - the caveat is the point.
 
-## Solid (9)
+## Solid (8)
 
 | Workflow | What it does |
 |---|---|
-| `gated-sdlc` | Takes one request to three commits on its own branch - frame, plan, build, test, review, document - refuting every agent claim against the repo before the next stage believes it. Five real runs in `my-rag`; the two most recent passes are runs 3 and 5, each landing three commits with a clean tree and zero failed checks, independently confirmed at 51 and 140 passing tests. The three failures each exposed a real defect, all fixed and locked down by 65 assertions in `.claude/hooks/logic-selftest.mjs` that extract the real functions from the source, mutation-checked. Run 4 is the one to read: it declined correctly on a real reviewer finding, and run 5 passed the same input with the finding absent. One caveat carried openly - `MAX_REVISION_LOOPS` was raised from 2 to 3 after run 4 hit the old cap, and no run has reached `revise_2` since, so the raised budget is confirmed harmless but not confirmed useful. The only package that commits to the target repo on its own, so runs belong on a disposable branch, and never edit an installed copy while a run is using it. |
+
 | `tenant-isolation-audit` | Four parallel lenses (data-layer, authz/session, background-jobs, integrations/AI-context) audit a multi-tenant SaaS target for cross-tenant leaks; every finding is adversarially verified before ranking. |
 | `code-review` | Five parallel lenses (correctness, security, performance, tests, readability) review a diff; every finding is adversarially verified before ranking. |
 | `bug-hunter` | Reproduces a bug for real, fans out root-cause hypotheses in parallel, converges, fixes it, and proves the regression test via a mutation check. |
@@ -28,10 +28,11 @@ Nothing here is hidden or rounded up. A workflow with real, working orchestratio
 | `technical-solution-proposal` | Six expert seats propose independently, cross-examine each other over capped rounds, and a synthesizer resolves what it can and records what stays disagreed. |
 | `spike-research` | Four independent research lenses, adversarially fact-checked, synthesized into an options matrix with a stated confidence level. |
 
-## Needs review (13)
+## Needs review (14)
 
 | Workflow | Open issue |
 |---|---|
+| `gated-sdlc` | Two real passes on record (runs 3 and 5 in `my-rag`: three commits each, clean tree, zero failed checks, independently confirmed at 51 and 140 passing tests). Run 6 then died with **every check green** - the plan asked the builder for the phase write-up, so it shipped inside the code commit and the documenter's commit found an empty index. Nothing anyone claimed was false; the defect was a question nobody asked. Four fixes landed since and **none is re-verified by a run**: a pure `docs_not_yours` check on the builder's declarations, `in_diff` replacing `exists` on the write-up, a planner told the write-up is not the builder's to produce, and `uncommitted` no longer reporting committed files as lost. All four mutation-checked among 83 assertions in `.claude/hooks/logic-selftest.mjs`. Also open: `MAX_REVISION_LOOPS` was raised to 3 after run 4 and no run has reached `revise_2` since. The only package that commits to the target repo on its own, so runs belong on a disposable branch, and never edit an installed copy while a run is using it. |
 | `prd-generator-v2` | Real smoke test predates 4 later fixes (revise-time size check, loosened schema caps, capped openIssues, measured charCount) - syntax-checked, not re-run. |
 | `tech-stack-selector` | charCount fix verified by audit; two findings from that same audit remain open (92K-token inline Author payload; full-text critique quoting instead of section references). |
 | `architecture-designer` | Size ceiling raised from real evidence and a charCount self-report fix both landed after the last real run; neither re-verified end to end. |

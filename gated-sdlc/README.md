@@ -38,7 +38,8 @@ commit_plan (probe)      COMMIT 1/3 - the planner's words, about the plan
    v
 build (builder, sonnet)  implement plan.md
    |--> gate             counts_match, shell_safe, in_diff (never exists:
-   v                     a deletion is a change and does not exist)
+   |                     a deletion is a change and does not exist),
+   v                     docs_not_yours (the write-up is the documenter's)
 test (probe) -----------> fix (builder) --+   bounded at 3
    |  ^                  reads the log     |   output redirected to a file;
    |  +-----------------------------------+    the probe reports the exit code
@@ -55,7 +56,8 @@ changes (probe)          diff the whole run against its pinned baseline
    |
    v
 document (documenter)    write up what the diff shows, nothing else
-   |--> gate             exists, min_bytes
+   |--> gate             in_diff (the write-up must be a PENDING change,
+   |                     not merely a file that exists), min_bytes
    v
 commit_docs (probe)      COMMIT 3/3 - the write-up beside the code
    |
@@ -70,12 +72,12 @@ accepted = suite green AND review approved AND no unverified claim
 The Workflow tool is explicit: *"Scripts are plain JavaScript... No filesystem or Node.js API access."*
 So a gate that needs to look at the disk cannot run in the script, and that single constraint splits the whole design:
 
-- **Tier 0, pure gates** compare the claim against itself. `verdict_consistent`, `counts_match`, `slug_shape`, `branch_matches_intent`, `no_placeholder`. They run in the script. Zero tokens, zero latency.
+- **Tier 0, pure gates** compare the claim against itself. `verdict_consistent`, `counts_match`, `slug_shape`, `branch_matches_intent`, `no_placeholder`, `shell_safe`, `docs_not_yours`. They run in the script. Zero tokens, zero latency.
 - **Tier 1, world gates** compare the claim against the repo. Eleven of them: `exists`, `non_empty`, `min_bytes`, `in_diff`, `branch_free`, `parses`, `contains`, `exits_zero`, `fingerprint`, `run`, `capture`. They are **batched into one `gated-probe` call per phase**, so ten checks cost the same as one - and the working-tree capture the write boundary needs rides along in that same batch rather than taking a second call.
 
 A claim about five files becomes five checks rather than one, so a failure names the file, not the claim that contained it.
 
-Picking the right check matters as much as running it. `exists` and `in_diff` look interchangeable on a changed file and are not: only `in_diff` can describe a deletion, and asking the wrong one refutes a true claim. See run 2.
+Picking the right check matters as much as running it. `exists` and `in_diff` look interchangeable on a changed file and are not. Only `in_diff` can describe a deletion, so asking `exists` refutes a true claim about a moved file - run 2. And only `in_diff` can tell a pending change from a file that is merely present, so asking `exists` accepts a write-up that was already committed and leaves the next commit with an empty index - run 6. The two failures are the same mistake in opposite directions: `exists` answers for the disk, `in_diff` answers for the repo.
 
 `verdict_consistent` is the cheapest useful gate in the package: an `approved: true` that ships blocking items, or an `approved: false` that names no problem, is a claim the harness refutes without reading a line of the diff.
 
@@ -267,7 +269,48 @@ Redirecting the suite's output to a file also keeps a large test log out of the 
 
 ## Smoke test
 
-**PASSED.** Five real runs on record, in `my-rag`. Runs 3 and 5 completed; runs 1, 2 and 4 each exposed a defect, and all five are kept below, because what the failures exposed is why the passes work. The most recent run is the one to read first.
+**PASSED, with fixes landed since that are not re-verified.** Six real runs on record, in `my-rag`. Runs 3 and 5 completed; runs 1, 2, 4 and 6 each exposed a defect, and all six are kept below, because what the failures exposed is why the passes work. The most recent run is the one to read first.
+
+### Run 6: NOT ACCEPTED - every check green, and the run still died
+
+`my-rag`, 2026-08-14, Phase 4 of that repo's `PRD.md` - the eval question set, `rag eval`, and config-driven retrieval knobs. `runId: ph4k7dq`, `testCommand: bun test`, branch `feat/phase-4-sharpening`.
+
+The suite went green on the first attempt, the reviewer approved 34 of 34 requirements, two commits landed, and the run still ended `accepted: false` - with **not one failed check anywhere in the run** until the very last command.
+
+```
+commit_plan   305ec1a  COMMIT 1/3    ok
+commit_build  210f75d  COMMIT 2/3    ok, 14 files
+commit_docs            COMMIT 3/3    git commit -> "nothing to commit,
+                                     working tree clean"  EXIT:1
+```
+
+**The plan asked the builder for the write-up.** `specs/phase-4-sharpening-plan.md:98` listed `docs/phase-4-sharpening.md` among the files to produce, and requirement R-34 made its existence a checkable criterion. So the builder wrote it, declared it among its 14 changed files - truthfully - and `commit_build` took it. The documenter then read the diff, found its own deliverable already written, verified it against the code hunks, and correctly wrote nothing. Its mtime proves it: the file stayed at `01:55`, the builder's write, while the documenter's message file is stamped `02:03`.
+
+Everything was green because **every claim was true**. The write-up did exist. It was 6811 bytes, not a stub. The builder's declared files were all genuinely in the diff. The defect was a question nobody asked.
+
+The sharpest detail is that the evidence was already in the failing gate's own probe batch:
+
+```
+probe:gate:document
+  [ok] the working tree            ---UNTRACKED---      <- a completely clean tree
+  [ok] the write-up is on disk     6811 bytes
+  [ok] the write-up is not a stub  6811 > 400
+```
+
+The tree row rides along in every gate for the write boundary. It was read, reported correctly, and no check consulted it for this question.
+
+A second defect fell out of the same run: the report claimed **14 paths left uncommitted**, and all 14 were in `210f75d` with a clean tree. `uncommitted` listed everything declared whenever `accepted` was false, on the assumption that a run which did not finish did not commit - which breaks the moment a run gets past commit 2 and dies later. A reader would have concluded the run lost a day of work; it lost a commit whose contents were already committed.
+
+Four fixes, none of them using the write boundary:
+
+1. **`docs_not_yours`**, a pure check refuting any `docs/` path in the builder's `changedFiles`. Deliberately a check and not a boundary entry: a breach is fatal with no retry, and this builder was obeying its plan. A refutation hands back the observation and calls it again.
+2. **`in_diff` replaces `exists`** on `documentPath` - the same lesson run 2 taught in the build phase, arrived at from the opposite side.
+3. **The planner is told the write-up is not the builder's to produce**, with the failure that taught it.
+4. **`uncommitted` subtracts what actually landed**, computed from the confirmed commit records.
+
+Covered by 18 new assertions in `.claude/hooks/logic-selftest.mjs`, all four mutation-checked. The first attempt at the `uncommitted` assertions was itself rewritten: under mutation it crashed inside the extractor instead of failing by name, and a test has to fail legibly to be worth having.
+
+**None of these four is verified by a real run.**
 
 ### Run 5: PASSED - the same Phase 3 the previous run declined
 
@@ -408,7 +451,7 @@ git reported the deletion; the filesystem could not. The builder had no legal an
 |---|---|
 | Anatomy | `node scripts/validate-workflow.mjs gated-sdlc` |
 | The script parses | `node --check`, with the async wrapper the Workflow tool supplies |
-| Workflow logic, 65 assertions | `node .claude/hooks/logic-selftest.mjs` - the my-rag file lists verbatim, the suite redirect executed against a real shell, and a real git repo proving a moved file's deletion is reported and stageable |
+| Workflow logic, 83 assertions | `node .claude/hooks/logic-selftest.mjs` - the my-rag file lists verbatim, the suite redirect executed against a real shell, and a real git repo proving a moved file's deletion is reported and stageable |
 | Write boundary, 25 assertions | `node .claude/hooks/boundary-selftest.mjs` - the hook's exit codes, plus both copies of the boundary table in sync |
 
 Both self-tests extract the real functions out of the source rather than copying them, so they cannot drift from the code they check.
@@ -419,9 +462,9 @@ Three further defects, found by reading before any run happened and all covered 
 
 **Do not edit an installed copy of this package while a run is using it.** Sync between runs, never during one. Run 2's evidence was spoiled exactly this way: the package was being updated in the target repo mid-run, leaving protected paths modified in the working tree, so any boundary check would have blamed the builder for edits it never made.
 
-### Still unexercised after five runs
+### Still unexercised after six runs
 
-None of these is a known defect. They are code paths five runs never happened to take, listed so nobody reads a green smoke test as full coverage.
+None of these is a known defect. They are code paths six runs never happened to take, listed so nobody reads a green smoke test as full coverage.
 
 Struck-through items were closed by a later run and are kept rather than deleted, because what closed them is worth more than the fact that they are closed.
 

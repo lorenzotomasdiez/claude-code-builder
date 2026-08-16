@@ -473,6 +473,30 @@ const PURE = {
     (Array.isArray(c[field]) ? c[field] : [c[field]])
       .filter(v => v != null && v !== '' && !shellSafe(v))
       .map(v => `${field} entry ${JSON.stringify(v)} contains a character that cannot be passed to the shell safely`),
+
+  // The write-up belongs to the documenter and rides in commit 3. A builder
+  // that produces it too puts it inside commit 2, and then the documenter has
+  // nothing left to commit - which is exactly how a run died with every single
+  // check green: `git commit` reported "nothing to commit, working tree clean"
+  // and no claim anyone made had been false.
+  //
+  // A CHECK and not a write-boundary entry, deliberately. A boundary breach is
+  // fatal by design: the phase dies and the run ends, with no retry. But the
+  // builder that did this was obeying its plan, which had listed the write-up
+  // among the files to produce - the harshest possible outcome for the most
+  // benign cause. A refutation hands back the observation and calls the builder
+  // again, which is a correction rather than an execution.
+  //
+  // Scoped to what the builder DECLARES, so it cannot see a doc written and not
+  // declared. That case is caught a phase later by `in_diff` on documentPath;
+  // the two are independent nets on purpose.
+  docs_not_yours: (c, { field }) =>
+    (c[field] || [])
+      .filter(p => typeof p === 'string' && /^docs\//.test(p))
+      .map(p => `${p} is the documenter's to write, not yours: docs/ ships in commit 3 of 3, ` +
+                `and a write-up committed with the code leaves that commit with nothing in it. ` +
+                `Drop it from ${field} and leave the file alone - if the plan asked you for it, ` +
+                `say so in notesForNextAgent and let the documenter write it.`),
 }
 
 const gateLog = []
@@ -844,6 +868,7 @@ try {
   const buildChecks = (c) => [
     { type: 'counts_match', field: 'changedFiles', count: 'fileCount' },
     { type: 'shell_safe', field: 'changedFiles' },
+    { type: 'docs_not_yours', field: 'changedFiles' },
     // `in_diff` ONLY. Never `exists`: a deletion is a change, and a deleted
     // file does not exist.
     //
@@ -1018,7 +1043,23 @@ try {
       (c) => [
         { type: 'no_placeholder', fields: ['documentPath'] },
         { type: 'shell_safe', field: 'documentPath' },
-        { type: 'exists', id: 'the write-up is on disk', path: c.documentPath },
+        // `in_diff`, not `exists`. The same distinction run 2 taught in the
+        // build phase, arrived at here from the opposite direction: `exists`
+        // answers for the disk, `in_diff` answers for the repo, and the only
+        // question worth asking about a file that is one step from being
+        // committed is the second one.
+        //
+        // A run died here with every check green. The builder had written the
+        // write-up as part of its own work, so commit 2 took it, and by the
+        // time this gate ran the file existed, was 6811 bytes, and was already
+        // committed - `exists` and `min_bytes` were both correctly true. The
+        // commit that followed found an empty index and reported "nothing to
+        // commit, working tree clean" as an error nobody could read.
+        //
+        // The evidence was already in this gate's own probe batch: the tree row
+        // that rides along for the write boundary showed a completely clean
+        // tree, two lines above the check that passed. No check consulted it.
+        { type: 'in_diff', id: 'the write-up is a pending change', path: c.documentPath },
         { type: 'min_bytes', id: 'the write-up is not a stub', path: c.documentPath, bytes: 400 },
         ...commitMessageChecks('commit_docs'),
       ])
@@ -1062,8 +1103,21 @@ function verdict(accepted, thrown = '') {
     branch: frame && frame.branchName,
     branchedFrom: startedOn,
     leftYouOn: branchCreated ? frame.branchName : startedOn,
-    // Everything the builder produced across every call, not just its last one.
-    uncommitted: !accepted ? committable([...declaredFiles]) : [],
+    // What the builder declared MINUS what actually landed in a commit.
+    //
+    // This used to report every declared path whenever `accepted` was false,
+    // on the assumption that a run that did not finish did not commit. That
+    // assumption breaks the moment a run gets past commit 2 and dies later: one
+    // did, at commit 3, and reported 14 paths as uncommitted when all 14 were
+    // sitting in the code commit and the tree was clean. Anyone reading that
+    // report would conclude the run had lost a day of work. It had lost a
+    // commit whose contents were already committed.
+    //
+    // Computed from `commitsMade`, which is only ever appended after a commit
+    // the probe confirmed, so a path can only drop off this list by genuinely
+    // having landed.
+    uncommitted: committable([...declaredFiles])
+      .filter(p => !commitsMade.some(c => (c.files || []).includes(p))),
     commits: commitsMade,
 
     // The evidence travels with the verdict, so the report cannot claim anything

@@ -44,6 +44,10 @@ That means:
 
 **Deleting a file is changing it, and moving one changes two paths.** If you move `a/x.ts` to `b/x.ts`, declare both: the new path and the old one. If you delete a file, declare it. The gate asks git whether each path is really in the diff, and git reports deletions, so a removed path passes exactly as a created one does - it is not something you have to work around or leave out. Leaving a deletion undeclared is the actively wrong choice: the removal never gets staged, and the commit keeps the file you just moved away from.
 
+**`docs/` is not yours, even when the plan asks for it.** A documenter runs after you and the write-up is its work product, committed on its own. A gate refutes any `docs/` path in `changedFiles`, so declaring one costs you a whole round.
+
+If the plan lists a `docs/` file among the files to produce, that is a defect in the plan, not an instruction to you: leave the file alone, keep it out of `changedFiles`, and say so in `notesForNextAgent`. A run has already died this way - the write-up went into the code commit, the documenter had nothing left to commit, and the run ended with every check green because nothing anyone claimed was false.
+
 `fileCount` must equal `changedFiles.length`. This redundancy is deliberate and the gate checks it - it is not decoration.
 
 Before you report, verify the list yourself: check the actual state of the working tree (diff/status) against what you are about to declare, and only declare what is really there. Getting this field right is not cosmetic bookkeeping - it decides what lands on the branch.

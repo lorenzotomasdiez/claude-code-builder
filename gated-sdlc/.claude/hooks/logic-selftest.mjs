@@ -256,6 +256,73 @@ console.log('\nevery phase whose only agent is a probe still names itself')
   }
 }
 
+// A run died with every check green: the plan asked the builder for the phase
+// write-up, so it landed inside the code commit, and the documenter's commit
+// found an empty index. Nothing anyone claimed had been false - the defect was
+// a missing question, in two places.
+console.log('\nthe write-up belongs to the documenter')
+{
+  const declared = (files) => M.PURE.docs_not_yours({ changedFiles: files }, { field: 'changedFiles' })
+
+  eq('a docs/ path is refuted', declared(['src/a.ts', 'docs/phase-4.md']).length, 1)
+  eq('the refusal names the path', declared(['docs/phase-4.md'])[0].startsWith('docs/phase-4.md'), true)
+  eq('every docs/ path is named, not just the first',
+    declared(['docs/a.md', 'docs/b.md', 'src/x.ts']).length, 2)
+  eq('a normal build is untouched', declared(['src/a.ts', 'README.md', 'evals/questions.md']), [])
+  // Only the directory this pipeline reserves. A file that merely has "docs" in
+  // its name is the builder's like any other.
+  eq('docs-adjacent names are not docs/', declared(['src/docs.ts', 'mydocs/x.md', 'a/docs/b.md']), [])
+  eq('an empty list is fine', declared([]), [])
+  eq('a missing field is fine', M.PURE.docs_not_yours({}, { field: 'changedFiles' }), [])
+  eq('a non-string entry does not throw', declared([null, 42, 'docs/x.md']).length, 1)
+
+  // It has to be a CHECK, never a boundary entry: a boundary breach kills the
+  // run with no retry, and the builder that did this was obeying its plan.
+  eq('the builder is still allowed to write docs/ at all',
+    M.permitted('docs/phase-4.md', 'gated-builder'), true)
+  eq('docs_not_yours is wired into the build gate',
+    /\{ type: 'docs_not_yours', field: 'changedFiles' \}/.test(SRC), true)
+}
+
+// `exists` answers for the disk, `in_diff` answers for the repo. For a file one
+// step away from being committed, only the second question means anything - the
+// same lesson run 2 taught in the build phase, reached here from the other side.
+console.log('\nthe document gate asks about the repo, not the disk')
+{
+  const gate = grab(/\(c\) => \[\s*\{ type: 'no_placeholder', fields: \['documentPath'\] \}[\s\S]*?\n      \]/, 'documentChecks')
+  eq('the write-up is checked with in_diff', /type: 'in_diff'[^}]*c\.documentPath/.test(gate), true)
+  eq('the write-up is no longer checked with exists', /type: 'exists'/.test(gate), false)
+  eq('it is still checked for being a stub', /type: 'min_bytes'/.test(gate), true)
+}
+
+// Reporting every declared path as uncommitted whenever the run was not
+// accepted told a reader that 14 files of work were lost, when all 14 were in
+// the code commit and the tree was clean.
+console.log('\nuncommitted means uncommitted')
+{
+  // A window rather than a shaped match on purpose: a regex that only matches
+  // the CORRECT form turns a regression into a crash inside grab() instead of a
+  // named failure, which is how the first version of this test behaved when it
+  // was mutation-checked. A test has to fail legibly to be worth having.
+  const at = SRC.indexOf('uncommitted:')
+  eq('the uncommitted field exists at all', at !== -1, true)
+  const src = SRC.slice(at, at + 300)
+  eq('it subtracts what actually landed', /commitsMade\.some/.test(src), true)
+  eq('it no longer keys off accepted', /!accepted \?/.test(src), false)
+
+  // The real numbers from the run that exposed it: 14 declared, 14 committed in
+  // commit 2, and the run still ended not-accepted because commit 3 died.
+  const declaredFiles = ['docs/phase-4-sharpening.md', 'evals/questions.md', 'src/cli.ts']
+  const commitsMade = [{ label: 'commit_build', files: ['docs/phase-4-sharpening.md', 'evals/questions.md', 'src/cli.ts'] }]
+  const left = M.committable(declaredFiles).filter(p => !commitsMade.some(c => (c.files || []).includes(p)))
+  eq('nothing is reported lost when everything landed', left, [])
+
+  const partial = [{ label: 'commit_build', files: ['src/cli.ts'] }]
+  eq('what genuinely did not land is still reported',
+    M.committable(declaredFiles).filter(p => !partial.some(c => (c.files || []).includes(p))),
+    ['docs/phase-4-sharpening.md', 'evals/questions.md'])
+}
+
 // The review loop is review -> revise -> review, so the round count buys one
 // fewer revision than it reads like. A cap of 2 buys ONE revision, which is
 // what ran out on my-rag Phase 3 with a one-line finding still open.

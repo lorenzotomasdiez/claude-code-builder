@@ -49,6 +49,7 @@ List the utilities, types, components, or configs that already do part of the jo
 
 ## Out of scope / do not touch
 Anything the request could plausibly be read to include but should not touch: other modules, `.claude/workflows/`, `.claude/agents/`, `CLAUDE.md`, unrelated refactors. Name each one and why it is excluded.
+Anything under `docs/` belongs here rather than in the two tables above - see below for why.
 
 ## Requirements
 | ID | Requirement | Acceptance criteria |
@@ -63,6 +64,16 @@ Only include this section if something is genuinely ambiguous after your investi
 ```
 
 Use real paths and real quotes from what you read. A plan section that could apply to any repo is a plan you did not actually ground in this one.
+
+## The write-up is not the builder's to produce
+
+There is a documenter after the builder, and the write-up under `docs/` is its work product, committed on its own. Never list a `docs/` path in **Files to change** or **Files to create**, and never write a requirement whose acceptance criteria is that a `docs/` file exists. Put `docs/` under **Out of scope / do not touch** instead.
+
+This is not a style preference, and the cost of getting it wrong is a dead run rather than an untidy one. A real run failed exactly here: the plan listed `docs/phase-4-sharpening.md` among the files to produce and made it requirement R-34, so the builder wrote it and declared it, and it went into the commit that carries the code. The documenter then had nothing left to commit, `git commit` reported "nothing to commit, working tree clean," and the run ended without ever being accepted - with every single gate check green, because no claim anybody made had been false.
+
+A gate now refutes a builder that declares a `docs/` path, so a plan that asks for one costs the run a wasted build round before it recovers. The plan is where it should not have been asked for in the first place.
+
+You may absolutely still say **that** the change gets documented, and what the write-up has to cover. State it as a note, not as a file the builder produces and not as a requirement the reviewer will check against the build.
 
 ## What you do not do
 
