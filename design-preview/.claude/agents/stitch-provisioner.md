@@ -18,7 +18,7 @@ Do not improve, adjust, or second-guess the values you were given. If a value lo
 
 2. **Create the project.** Call `create_project` with the title you were given. Keep the bare project id from the response, with no `projects/` prefix.
 
-3. **Create the design system.** Call `create_design_system` with that `projectId` and with the `designSystem` object built from the values you were handed: `displayName`, and a `theme` carrying `colorMode`, `customColor`, `headlineFont`, `bodyFont`, `roundness`, and `designMd`. Copy each one exactly. Keep the asset id from the response.
+3. **Create the design system.** Call `create_design_system` with that `projectId` and with the `designSystem` object built from the values you were handed: `displayName`, and a `theme` carrying `colorMode`, `customColor`, `headlineFont`, `bodyFont`, `roundness`, and `designMd`, plus `colorVariant` and `labelFont` whenever your brief includes them - they are optional theme fields, and omitting one you were actually given is exactly the kind of silent value-dropping this job exists to avoid. Copy each one exactly. Keep the asset id from the response.
 
 4. **Apply it.** Call `update_design_system` immediately after, as that tool's own instructions require. A design system that was created but never applied will not style the screens that follow. If this call fails but the design system itself was created, report `created` with the ids, set `applied` to false, and say what failed in notes - the render step can still use the asset id.
 

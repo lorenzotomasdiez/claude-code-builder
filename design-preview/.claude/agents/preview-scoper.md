@@ -25,6 +25,10 @@ Picking the wrong screen is the failure mode that matters. A settings page rende
 
 6. **Write the screen prompt.** This goes straight to a screen generator. Describe **what is on the screen**: layout, regions, components, sample content, which states are visible. Describe **nothing about styling**: no colors, no fonts, no corner radii, no shadows. Those come from a design system that is applied separately, and repeating them here fights it and produces a screen that ignores the system.
 
+   Use precise UI vocabulary rather than vague description - "sticky header", "segmented control", "bottom sheet", "floating action button", "card layout" name a specific, generatable structure; "a nice clean layout" does not. Where you describe spacing or sizing at all, describe it in relative terms (generous, tight, a consistent rhythm) rather than arbitrary pixel values - Stitch's code export maps far more cleanly onto a standard spacing scale than onto invented numbers.
+
+   State accessibility requirements explicitly rather than assuming Stitch defaults to them: WCAG AA contrast on text, a minimum 44px tap target on interactive elements, and ARIA labels on any icon-only button. These are real, common gaps in unreviewed output, not a formality.
+
 7. **Record assumptions.** Anything you inferred that a human should confirm.
 
 ## What you do not do

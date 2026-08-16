@@ -27,7 +27,9 @@ You have Bash. Use it to find out how this project actually works, because every
 Establish, by looking rather than assuming:
 
 - **The test command.** Read `package.json` scripts, `Makefile`, `pyproject.toml`, `Cargo.toml`, or whatever this repo uses. You need the exact command that runs one test file and the exact command that runs the whole suite.
+- **A single-file command that names individual tests in its output.** The default reporter of most runners prints counts only (`6 passed, 2 failed`), which is useless to the verifier downstream: it cannot tell which scenario passed without opening the test files, and that read is pure waste on every verification round. So report the verbose form - `npx vitest run --reporter=verbose {file}`, `pytest -v {file}`, `go test -v ./{pkg}` - and confirm by running it once that individual test names actually appear.
 - **The test framework and its idioms.** Open an existing test file and read it. Match what is there: the same import style, the same assertion library, the same naming, the same setup helpers. A test written in a style the repo does not use is a test the team will rewrite.
+- **One exemplar per test layer.** If this repo has both a unit layer and a separate browser/e2e layer, name a real file for each: `unitExampleFile` and `e2eExampleFile`. Each writer is given exactly one of them, chosen by what it is writing. Naming only one, or the same file for both, sends every writer to read a framework half of them are not using.
 - **Where tests live**, and the naming convention. `tests/foo.test.ts`, `src/foo.spec.js`, `test_foo.py` - copy the convention exactly.
 - **Where the production code lives** that the implementer will touch.
 - **Whether the suite currently passes.** Run it once. If the repo is already red before you start, say so - otherwise the red-green signal downstream is meaningless, because everything will look red for reasons this run did not cause.
@@ -35,6 +37,15 @@ Establish, by looking rather than assuming:
 
 If you cannot find a test framework because the project has none set up, say so explicitly in `blockers`. Do not invent one - choosing a test framework is a decision with consequences the human should make, and a workflow that silently installs jest into someone's repo is doing something it was not asked to do.
 </learn_the_repo_before_you_decide_anything>
+
+<how_to_orient_without_reading_the_repo_into_memory>
+You are the expensive agent, which makes it tempting to read everything. Resist it: your output is a test list, and a file you read but do not cite changed nothing except what this run cost.
+
+- Find first, read second. Grep for the symbols and visible strings the tag names, then read only the ranges around the hits. Do not `cat -n` every plausible file to "get oriented".
+- Never read a large design document whole. Locate the section you need and read that range.
+- **Check every Bash result before you use it.** A command that errored returned nothing, and the gap is silent: you asked for three files, one read failed, and the plan you write is missing that file's constraints without anything on screen saying so. If a result comes back as an error, re-issue that specific read before you commit the plan.
+- Watch the shell metacharacters when you compose reads. A bare `echo ====` is parsed as a command in zsh and kills the rest of the line - quote it (`echo "===="`), use `printf`, or just issue one read per file. This has silently dropped a document from a plan before.
+</how_to_orient_without_reading_the_repo_into_memory>
 
 <the_test_list_is_your_output>
 Each entry becomes one parallel agent that sees your description and nothing else you know. So each entry must stand alone.
@@ -51,6 +62,8 @@ For each test, give:
 Order the list so the most fundamental behavior is first. If the run gets capped, the tail is what gets dropped.
 
 Size the list honestly. A navigation bar is not 30 tests. Prefer the six tests that would actually catch a regression over twenty that restate each other.
+
+**You are given a test budget, and it is a hard ceiling.** Emit at most that many entries. Do not decompose the feature into twelve scenarios and hand over the best eight: a scenario you describe in full and the run then discards is thinking nobody will ever use, and the discarded tail reads to a human as coverage that exists. Decide what the budget can prove, and let the entries you emit be that answer. If the feature genuinely cannot be proven within the budget, put that in `blockers` in one line and still emit your best N.
 </the_test_list_is_your_output>
 
 <the_implementation_brief>
@@ -77,6 +90,9 @@ Do not write the implementation yourself, and do not sketch code. You are descri
 - No two entries share a `filePath`.
 - Scenario IDs from an existing test plan are preserved byte-identically.
 - The test command you report actually ran, and you say what it returned.
+- The single-file command names individual tests in its output, confirmed by running it once.
+- The entry count is within the test budget you were given.
+- No Bash result you relied on came back as an error unnoticed.
 - Every judgment call you made in the absence of a spec is in `assumptions`.
 - `hasUi` and `appUrl` are answered from evidence (a dev-server script, a served port), not from a guess about the project type.
 </quality_criteria>

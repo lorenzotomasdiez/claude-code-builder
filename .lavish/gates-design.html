@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gated-sdlc - diseño técnico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, dd, td, th, .badge, .label) { overflow-wrap: anywhere; }
+  :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+  .gd-rule { border-left: 3px solid var(--color-primary); padding-left: 1rem; }
+  .gd-kicker { letter-spacing: .18em; text-transform: uppercase; font-size: .68rem; font-weight: 700; }
+  .mermaid { display: flex; justify-content: center; overflow-x: auto; }
+  .mermaid svg { max-width: 100%; }
+  .gd-code { border-radius: .75rem; overflow: hidden; border: 1px solid color-mix(in oklch, var(--color-base-content) 12%, transparent); }
+  .gd-code * { font-size: .78rem; }
+</style>
+</head>
+<body class="bg-base-100 text-base-content">
+
+<main class="mx-auto max-w-6xl px-5 py-10 lg:px-8 lg:py-14">
+
+  <!-- ══════════════════════ HEADER ══════════════════════ -->
+  <header class="mb-14">
+    <p class="gd-kicker text-primary mb-3">Diseño técnico · paquete nuevo · claude-code-builder</p>
+    <h1 class="text-4xl lg:text-5xl font-bold leading-tight mb-5">gated-sdlc</h1>
+    <p class="text-lg lg:text-xl leading-relaxed text-base-content/80 max-w-3xl">
+      El flujo de sssf portado al Workflow tool de Claude Code. Una petición entra; sale entendida,
+      con su rama, planeada, construida, testeada, revisada, documentada y en tres commits,
+      con <strong>cada afirmación de cada agente refutada contra el repo</strong> antes de que la siguiente etapa la crea.
+    </p>
+
+    <div class="flex flex-wrap gap-2 mt-6">
+      <span class="badge badge-success badge-soft">Nombre: gated-sdlc</span>
+      <span class="badge badge-success badge-soft">3 commits siempre</span>
+      <span class="badge badge-success badge-soft">Rama propia</span>
+      <span class="badge badge-success badge-soft">1 reviewer, fiel a sssf</span>
+      <span class="badge badge-success badge-soft">Corrección: reintento frío</span>
+      <span class="badge badge-success badge-soft">Frontera: fingerprint de git</span>
+      <span class="badge badge-success badge-soft">Aborta con árbol sucio</span>
+      <span class="badge badge-success badge-soft">Al fallar, te deja en la rama</span>
+    </div>
+  </header>
+
+  <!-- ══════════════════════ 1. LA CADENA ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">1 · La cadena</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      La espina de <code>adw_simple_sdlc.py</code> más el tramo de arranque que pediste:
+      <strong>entender primero, ramificar después, planear encima de la rama</strong>.
+      El plan ya nace en su propio lugar, así que su commit no toca <code>main</code>.
+    </p>
+
+    <div class="rounded-box border border-base-content/10 bg-base-200 p-4 lg:p-6 mb-6">
+      <pre class="mermaid">
+flowchart TD
+    REQ["<b>request</b><br/>engineer"] --> FRAME["<b>frame</b><br/>framer · opus<br/>entiende la tarea y deriva<br/>la convención de rama del repo"]
+    FRAME --> G0{{"gate: slug válido,<br/>la rama no existe todavía,<br/>la convención está justificada"}}
+    G0 --> BR["<b>branch</b><br/>probe · git checkout -b"]
+    BR --> PLAN["<b>plan</b><br/>planner · opus"]
+    PLAN --> G1{{"gate: el plan existe,<br/>supera min_bytes, sin placeholders"}}
+    G1 --> CP["<b>commit_plan</b><br/>probe · commit 1 de 3"]
+    CP --> BUILD["<b>build</b><br/>builder · sonnet"]
+    BUILD --> G2{{"gate: los archivos declarados<br/>existen y están en el diff"}}
+    G2 --> TEST["<b>test</b><br/>probe · corre la suite"]
+    TEST -->|"rojo"| FIX["<b>fix</b><br/>builder · ≤3 vueltas"]
+    FIX --> TEST
+    TEST -->|"verde"| REV["<b>review</b><br/>reviewer · opus"]
+    REV --> G3{{"gate: el veredicto no<br/>se contradice a sí mismo"}}
+    G3 -->|"bloqueantes"| RVS["<b>revise</b><br/>builder · ≤2 vueltas"]
+    RVS --> RET["<b>retest</b><br/>probe"]
+    RET --> REV
+    G3 -->|"aprobado"| CB["<b>commit_build</b><br/>probe · commit 2 de 3"]
+    CB --> CHG["<b>changes</b><br/>probe · diff vs baseline"]
+    CHG --> DOC["<b>document</b><br/>documenter · sonnet"]
+    DOC --> G4{{"gate: el write-up existe<br/>y no es un stub"}}
+    G4 --> CD["<b>commit_docs</b><br/>probe · commit 3 de 3"]
+    CD --> FIN(["<b>accepted</b><br/>suite verde ∧ review aprobado<br/>∧ ningún claim sin verificar"])
+
+    style FIN fill:#1a3a2a,stroke:#22c55e,color:#dcfce7
+    style G0 fill:#3a3418,stroke:#eab308,color:#fef9c3
+    style G1 fill:#3a3418,stroke:#eab308,color:#fef9c3
+    style G2 fill:#3a3418,stroke:#eab308,color:#fef9c3
+    style G3 fill:#3a3418,stroke:#eab308,color:#fef9c3
+    style G4 fill:#3a3418,stroke:#eab308,color:#fef9c3
+      </pre>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      <div class="card card-border bg-base-200 card-sm">
+        <div class="card-body">
+          <p class="gd-kicker text-primary">La rama va antes del plan</p>
+          <p class="text-sm text-base-content/80">Y por eso el <code>frame</code> va antes que todo: hace falta entender la tarea para nombrar la rama. El commit del plan cae en la rama, no en <code>main</code>.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 card-sm">
+        <div class="card-body">
+          <p class="gd-kicker text-primary">El código se commitea al final</p>
+          <p class="text-sm text-base-content/80">No apenas se construye. Los fixes y las revisiones son parte del mismo producto, y código rojo no tiene nada que hacer en la rama. Un run que falla te deja parado en la rama, con el plan commiteado y el código sin commitear, listo para seguir a mano.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 card-sm">
+        <div class="card-body">
+          <p class="gd-kicker text-primary">Dos preguntas distintas</p>
+          <p class="text-sm text-base-content/80">La suite pregunta "¿corre?". La revisión pregunta "¿es lo que se pidió?". Ninguna contesta la otra, y una revisión que cambió código vuelve a la suite antes del commit.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 2. FRAME Y RAMA ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">2 · El tramo nuevo: entender y ramificar</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      Dos fases que sssf no tiene. El punto no es "crear una rama": es que
+      <strong>la convención de nombres se deriva del repo, no se asume</strong>, y que el framer
+      tenga que mostrar de dónde la sacó.
+    </p>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base"><code>frame</code> · qué devuelve</h3>
+          <ul class="text-sm space-y-2 mt-1">
+            <li><code class="text-primary">understanding</code> · la tarea reformulada, con lo que el repo ya tiene y lo que falta</li>
+            <li><code class="text-primary">intent</code> · <code>feat</code> | <code>fix</code> | <code>chore</code> | <code>docs</code> | <code>refactor</code> | <code>test</code></li>
+            <li><code class="text-primary">slug</code> · kebab-case, derivado del entendimiento, no de las palabras literales de la petición</li>
+            <li><code class="text-primary">branchName</code> · el nombre completo, ya en la convención del repo</li>
+            <li><code class="text-primary">conventionEvidence</code> · <strong>los nombres de rama reales de los que la dedujo</strong></li>
+            <li><code class="text-primary">blockers</code> · lo que impide arrancar: la petición es ambigua, no hay suite, el repo no es git</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base">Por qué <code>conventionEvidence</code> es un campo</h3>
+          <p class="text-sm text-base-content/80">
+            Sin él, "seguí las convenciones típicas" significa que el modelo inventa
+            <code>feature/add-login</code> porque es lo que vio en internet. Con él, tiene que correr
+            <code>git branch --sort=-committerdate</code> y mostrar las ramas reales.
+          </p>
+          <p class="text-sm text-base-content/80 mt-2">
+            En <em>este</em> repo, por ejemplo, las ramas recientes son <code>gnhf/objective-research-o-8867ed-5</code>
+            y <code>fast-builder</code>. Una convención asumida habría errado las dos.
+          </p>
+          <p class="text-sm text-base-content/80 mt-2">
+            Y es gate-able: campo vacío, claim refutado.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+      <table class="table table-sm">
+        <thead><tr><th>Gate del frame</th><th>Tier</th><th>Qué refuta</th></tr></thead>
+        <tbody>
+          <tr><td><code>slug_shape</code></td><td><span class="badge badge-success badge-xs">puro</span></td><td>Slug con mayúsculas, espacios o caracteres que git no acepta</td></tr>
+          <tr><td><code>branch_matches_intent</code></td><td><span class="badge badge-success badge-xs">puro</span></td><td><code>branchName</code> que no contiene el <code>intent</code> ni el <code>slug</code> que el propio agente eligió</td></tr>
+          <tr><td><code>no_placeholder</code></td><td><span class="badge badge-success badge-xs">puro</span></td><td><code>conventionEvidence</code> vacío o genérico: no miró el repo</td></tr>
+          <tr class="bg-warning/5"><td><code>branch_free</code></td><td><span class="badge badge-warning badge-xs">mundo</span></td><td><code>git rev-parse --verify</code> tiene que <strong>fallar</strong>: la rama todavía no existe. Un nombre repetido pisa trabajo ajeno.</td></tr>
+          <tr class="bg-warning/5"><td><code>on_expected_base</code></td><td><span class="badge badge-warning badge-xs">mundo</span></td><td>Ramificar desde una rama que ya es de otro trabajo en curso</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 3. LOS COMMITS ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">3 · Los tres commits, y el peligro que traen</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      Tres productos, tres autores, tres commits: el plan, el código, el write-up.
+      Cada <code>commitMessage</code> lo escribe el agente que hizo <em>ese</em> producto.
+      Reusar la oración de un agente para el diff de otro es cómo un log empieza a mentir.
+    </p>
+
+    <div class="alert alert-error alert-soft mb-6">
+      <span class="text-sm">
+        <strong>El peligro concreto, que sssf tiene y nosotros no vamos a copiar.</strong>
+        <code>adw_simple_sdlc.py</code> commitea con <code>commit_all</code>: <code>git add -A</code>.
+        Eso barre <em>todo</em> lo sucio del árbol, incluido tu trabajo sin commitear que no tiene nada
+        que ver con el run. Con una rama nueva encima, ese trabajo se va a un commit que vos no escribiste,
+        en una rama que no estabas mirando, y no te enterás hasta mucho después.
+      </span>
+    </div>
+
+    <div class="gd-rule mb-6">
+      <p class="text-base-content/90">
+        <strong>Acá el gate paga por sí solo.</strong> El builder declara <code>changedFiles</code>, y el gate
+        <code>in_diff</code> ya confirmó contra git que esos archivos existen y están efectivamente en el diff.
+        Entonces el commit hace <code>git add</code> de <strong>exactamente esos paths</strong>, nunca <code>-A</code>.
+        El commit contiene precisamente lo que el agente afirmó y el harness verificó. Ni un archivo más.
+      </p>
+      <p class="text-sm text-base-content/60 mt-2">
+        La verificación deja de ser solo un chequeo y pasa a ser la lista de archivos del commit.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+      <table class="table table-sm">
+        <thead><tr><th>Commit</th><th>Autor del mensaje</th><th>Qué entra</th><th>Cuándo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1 · el plan</strong></td><td><code>gated-planner</code></td><td>Los <code>artifacts</code> del plan, verificados</td><td>Antes de que exista una línea de código que lo desdibuje</td></tr>
+          <tr><td><strong>2 · el código</strong></td><td><code>gated-builder</code></td><td><code>changedFiles</code>, verificados contra el diff</td><td>Solo con suite verde y review aprobado</td></tr>
+          <tr><td><strong>3 · el write-up</strong></td><td><code>gated-documenter</code></td><td>Los <code>artifacts</code> del documento</td><td>Al lado del código que describe</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 4. QUÉ MAPEA Y QUÉ NO ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">4 · Qué mapea, qué se degrada, qué no existe</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      La parte honesta del port. Tres filas rojas.
+    </p>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+      <table class="table table-sm table-zebra">
+        <thead><tr><th>sssf</th><th>Nuestro equivalente</th><th class="w-24">Estado</th></tr></thead>
+        <tbody>
+          <tr><td><code>system.md</code></td><td>El cuerpo del <code>.claude/agents/*.md</code></td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td><code>user.md</code> + <code>{{vars}}</code></td><td>El string del call site, vía un helper <code>task()</code></td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td><code>output_type</code> pydantic</td><td>JSON Schema en <code>opts.schema</code>, validado en la capa de tool-call</td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td>Roster YAML (model, thinking, tools)</td><td>Frontmatter del agente + <code>opts.model</code>/<code>opts.effort</code> por llamada</td><td><span class="badge badge-info badge-xs">mejor</span></td></tr>
+          <tr><td>Gates sobre claims</td><td>El bloque de la sección 6, dos tiers</td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td><code>context_handoff/</code></td><td><code>.claude/runs/&lt;runId&gt;/handoff/</code>, uno por run</td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td><code>run.finish(accepted=)</code></td><td>El contrato de <code>return</code> del script</td><td><span class="badge badge-success badge-xs">igual</span></td></tr>
+          <tr><td><code>commit_all</code> (<code>git add -A</code>)</td><td><code>git add</code> de los paths verificados por el gate</td><td><span class="badge badge-info badge-xs">mejor</span></td></tr>
+          <tr><td><code>permissions.py</code></td><td>Fingerprint de git vía el probe</td><td><span class="badge badge-warning badge-xs">más caro</span></td></tr>
+          <tr class="bg-warning/5"><td><code>kind="code"</code> · gratis, determinístico, imposible de convencer</td><td>Un agente <code>probe</code> (haiku, solo Bash, sin Write)</td><td><span class="badge badge-warning badge-xs">degradado</span></td></tr>
+          <tr class="bg-error/5"><td><strong>Corrección en la sesión viva</strong></td><td>Reintento frío con la evidencia textual en el prompt</td><td><span class="badge badge-error badge-xs">peor</span></td></tr>
+          <tr class="bg-error/5"><td><strong><code>agent_map.json</code></strong> · un run posterior rejoinea la ventana de contexto de cada agente</td><td>Nada. Cada <code>agent()</code> arranca frío, siempre.</td><td><span class="badge badge-error badge-xs">no existe</span></td></tr>
+          <tr class="bg-error/5"><td>Tracer SQLite en vuelo, consultable mientras corre</td><td>El journal del workflow, legible recién después</td><td><span class="badge badge-error badge-xs">peor</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="alert alert-warning alert-soft mt-5">
+      <span class="text-sm">
+        <strong>La consecuencia de la fila roja del medio.</strong> Sin resume entre runs, la cadena tiene
+        que ser un solo run. sssf puede correr <code>adw_plan.py</code> hoy y <code>adw_build.py</code> mañana,
+        y el builder retoma su propia ventana. Nosotros no. Por eso el handoff dir en disco deja de ser una
+        comodidad y pasa a ser la única memoria compartida que tenemos, y por eso los commits importan más
+        de lo que parecen: <strong>son los únicos checkpoints reales de un run largo</strong>.
+      </span>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 5. EL ROSTER ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">5 · El roster</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      Seis agentes. Uno solo escribe código, uno solo escribe documentación, uno solo corre comandos,
+      y ninguno juzga su propio trabajo.
+    </p>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+      <table class="table table-sm">
+        <thead><tr><th>Agente</th><th>Modelo</th><th>Tools</th><th><code>writes:</code></th><th>Lo que no hace</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="text-primary">gated-framer</code></td><td>opus</td>
+            <td>Read, Grep, Glob, Bash</td><td><code>[]</code></td>
+            <td class="text-base-content/60">No planea. Entiende, nombra y detecta bloqueantes. <code>Bash</code> solo para leer git.</td>
+          </tr>
+          <tr>
+            <td><code class="text-primary">gated-planner</code></td><td>opus</td>
+            <td>Read, Grep, Glob, Write</td><td><code>specs/</code>, handoff</td>
+            <td class="text-base-content/60">No edita ni un archivo del repo. Sin <code>Edit</code>, sin <code>Bash</code>.</td>
+          </tr>
+          <tr>
+            <td><code class="text-primary">gated-builder</code></td><td>sonnet</td>
+            <td>Read, Write, Edit, Grep, Glob, Bash</td><td><em>sin restricción</em></td>
+            <td class="text-base-content/60">El único que toca el árbol de fuentes. No puede tocar <code>.claude/workflows/</code>: no edita a su propio evaluador.</td>
+          </tr>
+          <tr>
+            <td><code class="text-primary">gated-reviewer</code></td><td>opus</td>
+            <td>Read, Grep, Glob, Bash</td><td><code>[]</code></td>
+            <td class="text-base-content/60">No arregla. Juzga el código en disco contra <code>plan.md</code>, nunca el resumen del builder.</td>
+          </tr>
+          <tr>
+            <td><code class="text-primary">gated-documenter</code></td><td>sonnet</td>
+            <td>Read, Write, Edit, Grep, Glob</td><td><code>docs/</code>, <code>**/*.md</code></td>
+            <td class="text-base-content/60">Documenta solo lo que el diff muestra. "Document only" pasa de línea de prompt a regla enforced.</td>
+          </tr>
+          <tr class="bg-primary/5">
+            <td><code class="text-primary">gated-probe</code></td><td>haiku</td>
+            <td>Bash, Read</td><td><code>[]</code></td>
+            <td class="text-base-content/60"><strong>El sustituto de la fase <code>kind="code"</code>.</strong> Vocabulario cerrado. Reporta exit codes y output crudo. No interpreta, no arregla, no opina.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2 mt-5">
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base">El probe es la pieza crítica</h3>
+          <p class="text-sm text-base-content/80">
+            En sssf, correr <code>bun test</code> es un subproceso: gratis, instantáneo, imposible de convencer.
+            Acá es un modelo. Toda su definición existe para acercarlo a un subproceso: modelo más barato,
+            sin <code>Write</code>, vocabulario cerrado, y un schema que lo obliga a devolver el exit code y
+            el output textual en vez de una conclusión. <strong>Si el probe empieza a razonar, el determinismo
+            de la cadena entera se va con él.</strong>
+          </p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 border-warning/40">
+        <div class="card-body">
+          <h3 class="card-title text-base text-warning">Un reviewer, y lo que eso cuesta</h3>
+          <p class="text-sm text-base-content/80">
+            Fiel a sssf, decidido. Nuestro <code>CLAUDE.md</code> prefiere un panel de lentes independientes,
+            así que esto es una desviación deliberada y va anotada en el README, no escondida.
+            Lo que la amortigua es que el reviewer único <strong>no puede sellar de goma sin que se note</strong>:
+            el gate <code>verdict_consistent</code> le refuta mecánicamente un <code>approved=true</code> que
+            venga con bloqueantes, o un rechazo que no nombre un solo problema. No juzga la calidad de la
+            revisión, pero sí que la revisión no se contradiga.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 6. LOS GATES ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">6 · Los gates</h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      Un resultado de <code>agent()</code> validado por schema es un <strong>manifiesto de afirmaciones</strong>,
+      no evidencia. El schema garantiza la forma del JSON, nada más: un
+      <code>changedFiles: ["src/auth.ts"]</code> valida perfecto aunque ese archivo no exista.
+    </p>
+
+    <div class="gd-rule mb-6">
+      <p class="italic text-base-content/90">
+        "Scripts are plain JavaScript... <strong>No filesystem or Node.js API access.</strong>"
+      </p>
+      <p class="text-xs text-base-content/50 mt-1">Workflow tool - la restricción que parte el diseño en dos tiers</p>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 mb-6">
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base"><span class="badge badge-success badge-soft">Tier 0</span> El claim contra sí mismo</h3>
+          <p class="text-sm text-base-content/70 mb-2">Sin I/O, corre en el script. Cero tokens, cero latencia.</p>
+          <ul class="text-sm space-y-1">
+            <li><code class="text-primary">verdict_consistent</code> · aprobado con bloqueantes, o rechazado sin nombrar problema</li>
+            <li><code class="text-primary">counts_match</code> · "cambié 7" pero el array tiene 5</li>
+            <li><code class="text-primary">slug_shape</code> / <code class="text-primary">branch_matches_intent</code> · el nombre de rama contra lo que el propio agente eligió</li>
+            <li><code class="text-primary">refs_resolve</code> · cita un ID que ninguna etapa produjo</li>
+            <li><code class="text-primary">no_placeholder</code> · <code>TODO</code> sobrevivió en un entregable</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base"><span class="badge badge-warning badge-soft">Tier 1</span> El claim contra el repo</h3>
+          <p class="text-sm text-base-content/70 mb-2">Necesita disco, va al probe. Todos los checks de una fase, batcheados en <strong>una</strong> llamada.</p>
+          <ul class="text-sm space-y-1">
+            <li><code class="text-primary">exists</code> · <code>test -e</code></li>
+            <li><code class="text-primary">non_empty</code> / <code class="text-primary">min_bytes</code> · contra stubs disfrazados de entregable</li>
+            <li><code class="text-primary">in_diff</code> · <code>git diff --name-only HEAD</code> ∪ untracked. <strong>El que alimenta el <code>git add</code> preciso.</strong></li>
+            <li><code class="text-primary">branch_free</code> · <code>git rev-parse --verify</code> tiene que fallar</li>
+            <li><code class="text-primary">parses</code> · <code>jq</code></li>
+            <li><code class="text-primary">contains</code> · <code>grep -F -q</code></li>
+            <li><code class="text-primary">exits_zero</code> · corre el comando y devuelve el código</li>
+            <li><code class="text-primary">fingerprint</code> · el snapshot de la frontera de escritura</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-info alert-soft mb-8">
+      <span class="text-sm">
+        <strong>Vocabulario cerrado, a propósito.</strong> Si el probe aceptara comandos arbitrarios volvería
+        a ser un agente decidiendo, que es justo lo que estamos sacando del loop. Y la regla de admisión:
+        un check entra solo con un modo de falla observado detrás. Sin eso es teatro que cobra tokens por
+        confirmar trivialidades, y el verde deja de significar algo.
+      </span>
+    </div>
+
+    <p class="text-sm text-base-content/60 mb-2 font-mono">.claude/workflows/gated-sdlc.js · envelopes y gates</p>
+    <div id="code-gates" class="gd-code mb-8"></div>
+
+    <p class="text-sm text-base-content/60 mb-2 font-mono">.claude/workflows/gated-sdlc.js · frame, rama y commits</p>
+    <div id="code-chain" class="gd-code"></div>
+  </section>
+
+  <!-- ══════════════════════ 7. CORRECCIÓN ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">7 · Corrección <span class="badge badge-success badge-soft align-middle ml-2">decidido</span></h2>
+    <p class="text-base-content/70 mb-5 max-w-3xl">
+      <strong>Reintento frío con las violaciones textuales.</strong> Es lo único que funciona hoy: dentro de un
+      script no hay <code>SendMessage</code> y <code>agent()</code> siempre arranca fresco. Lo que perdemos
+      respecto del original es real: en sssf la corrección re-entra a la sesión viva, donde el modelo todavía
+      tiene en contexto el trabajo que produjo el casi-acierto. Nosotros re-explicamos desde cero.
+    </p>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="card card-border bg-base-200 card-sm">
+        <div class="card-body">
+          <p class="gd-kicker text-warning">Lo que compensa</p>
+          <p class="text-sm text-base-content/80">El prompt de reintento carga la tarea, el claim anterior completo, y <strong>lo que el harness observó</strong>: no "faltan archivos" sino <code>src/auth.ts: no such file</code>. Un reintento frío con evidencia concreta es otra cosa que un reintento frío a secas.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 card-sm">
+        <div class="card-body">
+          <p class="gd-kicker text-warning">Uno, no tres</p>
+          <p class="text-sm text-base-content/80">Si el segundo intento tampoco verifica, el problema no es de fraseo. La fase muere y el run cierra con <code>accepted: false</code> nombrando qué claim nunca se pudo verificar, la rama y el commit del plan en pie.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 8. FRONTERA ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">8 · Frontera de escritura <span class="badge badge-success badge-soft align-middle ml-2">fingerprint de git</span></h2>
+    <p class="text-base-content/70 mb-5 max-w-3xl">
+      Pediste lo más robusto, y con commits automáticos y rama propia la respuesta se vuelve fácil:
+      <strong>el fingerprint de git</strong>. No porque el hook sea mala idea, sino porque el hook no ve
+      el daño que más importa acá.
+    </p>
+
+    <div class="grid gap-4 md:grid-cols-2 mb-6">
+      <div class="card card-border bg-base-200 border-success/40">
+        <div class="card-body">
+          <h3 class="card-title text-base text-success">Por qué gana</h3>
+          <ul class="text-sm space-y-2 list-disc pl-4">
+            <li><strong>Atrapa la reversión.</strong> Un path que estaba sucio antes y está limpio ahora fue revertido, y revertir es modificar. Un hook que intercepta <code>Write</code> no ve un <code>git checkout .</code> corrido desde <code>Bash</code>.</li>
+            <li><strong>Es exactamente el daño de este workflow.</strong> Commitea y crea ramas: perder trabajo sin commitear es el peor final posible, y es el único que este método detecta.</li>
+            <li><strong>Vive dentro del paquete.</strong> Un hook es config global del harness y rompe el "cada workflow es copiable solo".</li>
+            <li><strong>No depende de nada que yo no haya verificado.</strong> El scope por subagente del hook es una pregunta abierta que no investigué.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base">Lo que cuesta, dicho claro</h3>
+          <ul class="text-sm space-y-2 list-disc pl-4">
+            <li>Dos llamadas haiku por fase guardada. Solo se guardan las cuatro que escriben: plan, build, fix/revise, document.</li>
+            <li>Es post-mortem: la escritura ya ocurrió y hay que deshacerla. Un hook la habría prevenido.</li>
+            <li>El rollback es la única parte de todo el diseño que puede destruir trabajo si está mal. Por eso va última en el orden de construcción.</li>
+          </ul>
+          <p class="text-sm text-base-content/70 mt-2">
+            El hook queda como investigación posterior, no descartado: si resulta scopeable por subagente,
+            es un complemento barato, no un reemplazo.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-box border border-base-content/10 bg-base-200 p-4 lg:p-6 mb-6">
+      <pre class="mermaid">
+sequenceDiagram
+    participant S as script
+    participant P as probe (haiku)
+    participant A as agente de la fase
+    participant R as repo
+
+    S->>P: fingerprint()
+    P->>R: git diff HEAD --numstat + ls-files -o
+    P-->>S: before = { "src/a.ts": "12,3", ... }
+    S->>A: correr la fase
+    A->>R: escribe / edita / (revierte)
+    A-->>S: claim
+    S->>P: fingerprint()
+    P-->>S: after
+    Note over S: changedPaths(before, after)<br/>JS puro, gratis
+    S->>S: breaches = touched.filter(no permitido)
+    alt hay breaches
+        S->>P: rollback SOLO lo que el agente introdujo
+        S-->>S: la fase muere. No es corregible.
+    else limpio
+        S-->>S: seguir
+    end
+      </pre>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-5">
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base">El rollback quedó fácil</h3>
+          <p class="text-sm text-base-content/80">
+            En sssf esto es la parte delicada: hay que distinguir lo que el agente introdujo de lo que ya
+            estaba sucio, porque descartar trabajo sin commitear del operador para ordenar es el mismo daño
+            que el módulo existe para prevenir. <strong>Abortar con árbol sucio elimina el caso entero:</strong>
+            el run arranca desde un árbol limpio, así que todo lo que aparece en el fingerprint lo introdujo
+            el run, y revertirlo nunca puede pisar trabajo tuyo. Un <code>git checkout --</code> sin ambigüedad.
+          </p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base">Un breach no es una violación de gate</h3>
+          <p class="text-sm text-base-content/80">
+            Un gate se corrige re-prompteando, porque el trabajo se puede rehacer. Una escritura no
+            autorizada <em>ya ocurrió</em>: no hay re-prompt que la deshaga. La fase muere y se nombra
+            cada path. Dos caminos de error distintos, no un flag del mismo.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="code-boundary" class="gd-code"></div>
+  </section>
+
+  <!-- ══════════════════════ 9. ACEPTACIÓN ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">9 · Aceptación separada del éxito de fase</h2>
+    <p class="text-base-content/70 mb-5 max-w-3xl">
+      Una fase que corrió la suite y la vio roja <strong>hizo su trabajo</strong>: la fase pasa, el run no.
+      En sssf esto nació de un bug real: una property con side effects escribía la sesión en verde en la db,
+      en la terminal y en la UI, mientras salía con exit 1. Solo un CI mirando <code>$?</code> veía la verdad.
+    </p>
+    <div id="code-accept" class="gd-code"></div>
+  </section>
+
+  <!-- ══════════════════════ 10. CÓMO FRACASA ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">10 · Cómo fracasa <em>esto</em></h2>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base text-error">1 · El probe razona</h3>
+          <p class="text-sm text-base-content/80">Le pedís que corra la suite y contesta "parece que pasó". Volvió a ser un agente opinando, y con él se fue el determinismo de toda la cadena.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación:</strong> vocabulario cerrado, <code>observed</code> obligatorio con output crudo, <code>ok</code> derivado del exit code, y un system prompt que dice "sos un subproceso con un modelo de lenguaje adosado".</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base text-error">2 · El commit se lleva puesto tu trabajo</h3>
+          <p class="text-sm text-base-content/80">El árbol estaba sucio con cosas tuyas cuando arrancó el run, y un <code>git add -A</code> las mete en un commit ajeno, en una rama que no estabas mirando.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación, doble:</strong> el preflight <strong>aborta</strong> si hay cualquier cosa sin commitear, así que el caso no llega a existir. Y aun así nunca <code>-A</code>: <code>git add</code> de los paths que el gate ya verificó, para que un archivo que aparezca a mitad del run tampoco se cuele.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base text-error">3 · Fail open</h3>
+          <p class="text-sm text-base-content/80">El probe muere, devuelve <code>null</code>, y un claim no verificado pasa como verificado. Peor que no tener gates: da confianza falsa.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación:</strong> <code>if (!report) violations.push(...)</code>, explícito en el bloque canónico. No verificado <em>es</em> fallado.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base text-error">4 · Un run largo que muere tarde</h3>
+          <p class="text-sm text-base-content/80">16 fases en un solo run, sin resume. Si muere en <code>document</code>, todo el frame-plan-build-test-review se rehace desde cero.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación:</strong> los commits son los checkpoints. Un rerun sobre la misma rama ve el plan ya commiteado y puede saltearlo. El handoff dir es la memoria compartida.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body">
+          <h3 class="card-title text-base text-error">5 · Teatro de gates</h3>
+          <p class="text-sm text-base-content/80">Seis gates que chequean que un archivo exista. Verde permanente, tokens gastados, cero señal. O peor: alguien agrega <code>check: 'code_is_good'</code> y el gate se come el rol del reviewer.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación:</strong> el vocabulario cerrado <em>es</em> la frontera, y ningún check entra sin un modo de falla observado detrás.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 border-warning/40">
+        <div class="card-body">
+          <h3 class="card-title text-base text-warning">6 · El smoke test no prueba nada</h3>
+          <p class="text-sm text-base-content/80">El <code>CLAUDE.md</code> pide exactamente una corrida real con input trivial. Pero 16 fases, 3 commits y una rama es una corrida cara, y sobre un repo de juguete no prueba el camino real.</p>
+          <p class="text-sm mt-2"><strong class="text-success">Mitigación:</strong> smoke test sobre este mismo repo, petición mínima real, rama desechable, y los 3 commits de verdad para que el camino que se prueba sea el que se va a usar.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ 11. ORDEN ══════════════════════ -->
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold mb-2">11 · Orden de construcción <span class="badge badge-success badge-soft align-middle ml-2">paquete completo</span></h2>
+    <ul class="steps steps-vertical w-full">
+      <li class="step step-primary" data-content="1">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">El probe primero, y solo</p>
+          <p class="text-sm text-base-content/70">La pieza de la que depende todo y la más fácil de que salga mal. Agente + schema + vocabulario, probado con un workflow de una sola fase que corre <code>git status</code> y devuelve el exit code real.</p>
+        </div>
+      </li>
+      <li class="step step-primary" data-content="2">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">El bloque de gates sobre el probe</p>
+          <p class="text-sm text-base-content/70">Tier 0 en JS puro, tier 1 batcheado. Verificado contra claims falsos fabricados a mano: un <code>changedFiles</code> con un archivo inventado tiene que dar rojo.</p>
+        </div>
+      </li>
+      <li class="step step-primary" data-content="3">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">Frame, rama y el commit preciso</p>
+          <p class="text-sm text-base-content/70">El tramo de arranque completo, incluido el <code>git add</code> de paths verificados. Es lo que hace seguro todo lo que viene después.</p>
+        </div>
+      </li>
+      <li class="step step-primary" data-content="4">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">Los cuatro agentes restantes</p>
+          <p class="text-sm text-base-content/70">Destilados de <code>experts/*.md</code> como manda el <code>CLAUDE.md</code>, cada uno con su sección de "lo que no hacés".</p>
+        </div>
+      </li>
+      <li class="step step-primary" data-content="5">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">La cadena completa</p>
+          <p class="text-sm text-base-content/70">Loops acotados, contrato de aceptación, comando y README con el diagrama, el rationale y la desviación anotada del reviewer único.</p>
+        </div>
+      </li>
+      <li class="step" data-content="6">
+        <div class="text-left pl-3 pb-6">
+          <p class="font-semibold">Frontera de escritura</p>
+          <p class="text-sm text-base-content/70">Última porque el rollback es lo único que puede destruir trabajo si está mal.</p>
+        </div>
+      </li>
+      <li class="step" data-content="7">
+        <div class="text-left pl-3">
+          <p class="font-semibold">Un smoke test, uno solo</p>
+          <p class="text-sm text-base-content/70">Petición mínima real sobre este repo, rama desechable, resultado en el README con las fases que corrieron y el pass/fail honesto.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ══════════════════════ 12. DECISIONES ══════════════════════ -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-2">12 · Cómo se porta con el mundo sucio <span class="badge badge-success badge-soft align-middle ml-2">decidido</span></h2>
+    <p class="text-base-content/70 mb-6 max-w-3xl">
+      Las dos últimas, cerradas. Juntas le dan al workflow una postura coherente:
+      <strong>exige un punto de partida limpio, y cuando algo sale mal te deja exactamente donde
+      podés seguir vos.</strong>
+    </p>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+      <div class="card card-border bg-base-200 border-success/40">
+        <div class="card-body">
+          <h3 class="card-title text-base"><span class="badge badge-success badge-sm">decidido</span> Aborta con árbol sucio</h3>
+          <p class="text-sm text-base-content/80 mt-1">
+            Cualquier cosa sin commitear y el run no arranca, con la lista de paths en el reporte.
+          </p>
+          <p class="text-sm text-base-content/80 mt-2">
+            <strong>Lo que compra, que es más de lo que parece:</strong> con el árbol limpio al empezar,
+            todo lo que aparezca después lo introdujo el run. Eso hace desaparecer el caso borde más feo
+            de <code>permissions.py</code> - distinguir lo que el agente tocó de lo que ya estaba sucio - y
+            deja el rollback como un <code>git checkout --</code> sin ambigüedad. La regla más estricta
+            terminó siendo la que simplifica el resto.
+          </p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200 border-success/40">
+        <div class="card-body">
+          <h3 class="card-title text-base"><span class="badge badge-success badge-sm">decidido</span> Al fallar, te deja en la rama</h3>
+          <p class="text-sm text-base-content/80 mt-1">
+            Sin <code>git checkout -</code> al final. Terminás parado donde está el trabajo.
+          </p>
+          <p class="text-sm text-base-content/80 mt-2">
+            Es coherente con lo que el workflow es: no un servicio que va y vuelve, sino un tramo de trabajo
+            que te entrega el volante. Volver solo, en un fallo, te obligaría a sacar el nombre de la rama
+            de un reporte para volver a entrar. El reporte lidera con dónde estás, qué commits hay y qué
+            quedó sin commitear.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning alert-soft">
+      <span class="text-sm">
+        <strong>La fricción que crean juntas, dicha antes de que la encuentres.</strong>
+        Un run falla en <code>build</code> y te deja en la rama con código sin commitear. Volver a correrlo
+        ahí mismo <strong>aborta por árbol sucio</strong>. Es correcto, pero es una trampa si no la ves venir,
+        así que el mensaje de aborto tiene que reconocer el caso: detectar que estás en una rama de
+        <code>gated-sdlc</code> con su commit de plan, y decir las dos salidas -
+        commiteá lo que hay y volvé a correr, o descartalo y arrancá de nuevo - en vez del genérico
+        "tenés cosas sin commitear".
+      </span>
+    </div>
+  </section>
+
+  <footer class="text-xs text-base-content/40 border-t border-base-content/10 pt-5">
+    Flujo derivado de <code>~/projects/factory</code> (sssf: <code>adw_simple_sdlc.py</code>, <code>gates.py</code>,
+    <code>permissions.py</code>, <code>agents.py</code>, <code>runner.py</code>, <code>handoff.md</code>, <code>SKILL.md</code>),
+    adaptado a las restricciones del Workflow tool de Claude Code.
+    Sistema de diseño: DaisyUI v5 - el repo sujeto no tiene uno propio.
+  </footer>
+
+</main>
+
+<!-- ══════════════════════ CODE PAYLOADS ══════════════════════ -->
+<script type="text/plain" id="src-gates">
+// ── el contrato de envelope ──────────────────────────────────────────────
+// Todo agente devuelve esto como base. status es load-bearing: un envelope que
+// parsea pero dice fail NO es una fase exitosa.
+const ENVELOPE = {
+  status:  { type: 'string', enum: ['success', 'fail'] },
+  summary: { type: 'string', description: 'Una oración: qué pasó' },
+  artifacts: { type: 'array', items: { type: 'string' },
+               description: 'Paths escritos, normalmente dentro del handoff dir' },
+  notesForNextAgent: { type: 'string' },
+}
+const envelope = (props, required = []) => ({
+  type: 'object',
+  properties: { ...ENVELOPE, ...props },
+  required: ['status', 'summary', ...required],
+})
+
+const FRAME = envelope({
+  understanding: { type: 'string', description: 'La tarea reformulada: qué existe ya en el repo y qué falta' },
+  intent: { type: 'string', enum: ['feat', 'fix', 'chore', 'docs', 'refactor', 'test'] },
+  slug: { type: 'string', description: 'kebab-case, derivado del entendimiento, no de las palabras literales de la petición' },
+  branchName: { type: 'string', description: 'Nombre completo, ya en la convención de ESTE repo' },
+  conventionEvidence: { type: 'string',
+    description: 'Los nombres de rama REALES de los que dedujiste la convención. Corré git branch --sort=-committerdate. No inventes una convención genérica.' },
+  blockers: { type: 'array', items: { type: 'string' } },
+}, ['understanding', 'intent', 'slug', 'branchName', 'conventionEvidence'])
+
+const PLAN = envelope({ commitMessage: { type: 'string', description: 'Subject imperativo para el commit DEL PLAN, no del código' } })
+const BUILD = envelope({
+  changedFiles: { type: 'array', items: { type: 'string' } },
+  fileCount:    { type: 'number', description: 'Redundante a propósito: el gate lo cruza contra changedFiles' },
+  commitMessage:{ type: 'string', description: 'Subject imperativo para el commit DEL CÓDIGO' },
+}, ['changedFiles', 'fileCount'])
+const REVIEW = envelope({
+  approved: { type: 'boolean', description: 'true SOLO si todo requisito se cumple y blocking está vacío' },
+  findings: { type: 'array', items: { type: 'object', properties: {
+    requirement: { type: 'string' }, met: { type: 'boolean' },
+    evidence: { type: 'string', description: 'Un file:line, o exactamente qué falta' } } } },
+  blocking: { type: 'array', items: { type: 'string' } },
+}, ['approved'])
+
+// ── gates ────────────────────────────────────────────────────────────────
+// Un claim validado por schema es un MANIFESTO, no evidencia. Esto lo refuta.
+// Dos tiers, porque el script NO tiene filesystem:
+//   puro  - el claim contra sí mismo. Corre acá. Cero tokens.
+//   mundo - el claim contra el repo. Batcheado en UNA llamada al probe.
+
+const PROBE_SCHEMA = {
+  type: 'object',
+  properties: {
+    checks: { type: 'array', items: { type: 'object', properties: {
+      id: { type: 'string' },
+      ok: { type: 'boolean', description: 'Derivado del exit code o del stat. Nunca de una impresión.' },
+      observed: { type: 'string', description: 'Lo que el comando imprimió, textual. Nunca un juicio.' },
+    }, required: ['id', 'ok', 'observed'] } },
+  },
+  required: ['checks'],
+}
+
+const PURE = {
+  verdict_consistent: (c) => {
+    const unmet = (c.findings || []).filter(f => !f.met).map(f => f.requirement)
+    const blocking = c.blocking || []
+    const out = []
+    if (c.approved && (blocking.length || unmet.length))
+      out.push(`approved=true con ${blocking.length} bloqueante(s) y ${unmet.length} requisito(s) sin cumplir`)
+    if (!c.approved && !blocking.length && !unmet.length)
+      out.push('approved=false pero no nombró un solo bloqueante ni requisito sin cumplir')
+    return out
+  },
+  counts_match: (c, { field, count }) => {
+    const n = (c[field] || []).length
+    return n === c[count] ? [] : [`${count}=${c[count]} pero ${field} tiene ${n} entradas`]
+  },
+  slug_shape: (c) =>
+    /^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.slug || '') ? []
+      : [`slug ${JSON.stringify(c.slug)} no es kebab-case: git no lo va a aceptar tal cual`],
+  branch_matches_intent: (c) => {
+    const b = c.branchName || ''
+    const out = []
+    if (!b.includes(c.slug)) out.push(`branchName ${JSON.stringify(b)} no contiene su propio slug ${JSON.stringify(c.slug)}`)
+    if (!b.includes(c.intent)) out.push(`branchName ${JSON.stringify(b)} no refleja intent=${c.intent}`)
+    return out
+  },
+  refs_resolve: (c, { field, known }) => {
+    const missing = (c[field] || []).filter(r => !known.includes(r))
+    return missing.length ? [`referencia IDs que ninguna etapa produjo: ${missing.join(', ')}`] : []
+  },
+  no_placeholder: (c, { fields }) =>
+    fields.filter(f => !(c[f] || '').trim() || /\b(TODO|TBD|FIXME|lorem ipsum)\b|<\.\.\.>/i.test(c[f]))
+          .map(f => `${f} está vacío o tiene texto placeholder`),
+}
+
+async function gate(claim, checks, phaseName) {
+  const violations = []
+  const world = []
+  for (const c of checks) {
+    if (PURE[c.check]) violations.push(...PURE[c.check](claim, c))
+    else world.push(c)
+  }
+
+  if (world.length) {
+    const report = await agent(
+      `Corré exactamente estos checks y reportá lo que observaste.\n` +
+      `No arreglés nada. No interpretés. ok viene del exit code.\n\n${JSON.stringify(world, null, 2)}`,
+      { label: `gate:${phaseName}`, phase: 'Gate', agentType: 'gated-probe',
+        model: 'haiku', effort: 'low', schema: PROBE_SCHEMA },
+    )
+    // FAIL CLOSED. Un claim no verificado es un claim FALLADO, nunca un pase
+    // silencioso. Misma regla que NULL_SAFETY_AFTER_FANOUT.md, aplicada al verde.
+    if (!report) violations.push(`el probe no reportó sobre ${world.length} check(s)`)
+    else violations.push(...report.checks.filter(c => !c.ok).map(c => `${c.id}: ${c.observed}`))
+  }
+  return violations
+}
+
+// La corrección es un reintento FRÍO: no hay continuación de sesión dentro de
+// un script. Lo que lo hace útil es que el prompt carga la evidencia TEXTUAL de
+// lo que el harness midió - no "faltan archivos" sino "src/auth.ts: no such
+// file". Uno solo: si el segundo tampoco verifica, no es un problema de fraseo.
+async function gated(name, produce, checksFor) {
+  const claim = await produce()
+  if (!claim) throw new Error(`${name}: el agente murió, no hay claim que verificar`)
+
+  const violations = await gate(claim, checksFor(claim), name)
+  if (!violations.length) return claim
+
+  log(`${name}: ${violations.length} claim(s) refutado(s), reintentando en frío`)
+  const retry = await produce(claim, violations)
+  if (!retry) throw new Error(`${name}: el reintento murió. Sin verificar: ${violations[0]}`)
+
+  const still = await gate(retry, checksFor(retry), `${name}-retry`)
+  if (still.length) throw new Error(`${name}: nunca produjo un claim verificable - ${still.join(' · ')}`)
+  return retry
+}
+</script>
+
+<script type="text/plain" id="src-chain">
+// ── el equivalente de user.md ────────────────────────────────────────────
+// La IDENTIDAD vive en el .md del agente (system prompt). La FORMA de la tarea
+// vive acá, en el call site. Mismo agente, muchas llamadas, distinta forma.
+const task = (ask, previous, extra = '') => [
+  `## La petición\n\n${ask}`,
+  `## Envelope anterior\n\n${previous ? JSON.stringify(previous, null, 2) : '(ninguno)'}`,
+  `## Directorio de handoff\n\n${HANDOFF}\nEscribí ahí todo lo que los agentes siguientes necesiten leer.`,
+  extra,
+].filter(Boolean).join('\n\n')
+
+const corrected = (base, claim, violations) => `${base}
+
+## Tu reporte anterior falló la validación
+
+Reportaste:
+${JSON.stringify(claim, null, 2)}
+
+El harness verificó eso contra el repo y observó:
+- ${violations.join('\n- ')}
+
+Arreglá el trabajo, o corregí el reporte si el reporte es lo que está mal.
+Volvé a emitir el JSON completo.`
+
+// Un agente por fase, con corrección incorporada. `produce` recibe el claim
+// anterior y las violaciones solo en el reintento.
+const phaseAgent = (type, model, schema, ask, previous, extra) => (prev, v) =>
+  agent(prev ? corrected(task(ask, previous, extra), prev, v) : task(ask, previous, extra),
+        { schema, model, agentType: type })
+
+// ── preflight ────────────────────────────────────────────────────────────
+// Antes de tocar NADA: en qué rama estamos, si hay algo sucio, y cuál es el
+// baseline contra el que el documenter va a medir al final.
+phase('Preflight')
+const pre = await probe([
+  { check: 'exits_zero', id: 'esto es un repo git', cmd: 'git rev-parse --git-dir' },
+  { check: 'fingerprint', id: 'el estado del árbol antes de que empecemos' },
+  { check: 'capture', id: 'rama actual', cmd: 'git rev-parse --abbrev-ref HEAD' },
+  { check: 'capture', id: 'baseline', cmd: 'git rev-parse HEAD' },
+])
+
+// Árbol limpio o no arrancamos. No es prolijidad: es lo que hace que TODO lo
+// demás sea seguro. Con `before` vacío, cualquier path que aparezca en un
+// fingerprint posterior lo introdujo este run, así que el rollback nunca puede
+// pisar trabajo tuyo y ningún commit puede arrastrarlo. La alternativa - seguir
+// y esquivar lo sucio - convierte cada commit y cada rollback en un caso borde.
+if (pre.dirtyPaths.length)
+  return {
+    accepted: false,
+    reason: `el árbol tiene ${pre.dirtyPaths.length} path(s) sin commitear. ` +
+            `Este workflow crea una rama y commitea tres veces: arrancar sucio es cómo ` +
+            `tu trabajo termina en un commit que no escribiste. Commiteá o guardá primero.`,
+    dirtyPaths: pre.dirtyPaths,
+  }
+
+// ── frame ────────────────────────────────────────────────────────────────
+// Entender la tarea es lo que permite nombrar la rama. Por eso va primero.
+phase('Frame')
+const frame = await gated('frame',
+  phaseAgent('gated-framer', 'opus', FRAME, request, null,
+    `## Cómo nombrar la rama\n\nCorré \`git branch -a --sort=-committerdate | head -20\` y ` +
+    `derivá la convención de las ramas REALES de este repo. Copiá esos nombres en ` +
+    `conventionEvidence. No apliques una convención genérica que viste en otro lado.`),
+  (c) => [
+    { check: 'slug_shape' },
+    { check: 'branch_matches_intent' },
+    { check: 'no_placeholder', fields: ['understanding', 'conventionEvidence'] },
+    { check: 'branch_free', id: 'la rama no existe todavía', branch: c.branchName },
+  ])
+
+if (frame.blockers?.length)
+  return { accepted: false, reason: `no se puede arrancar: ${frame.blockers.join(' · ')}` }
+
+phase('Branch')
+await probe([{ check: 'run', id: 'crear la rama', cmd: `git checkout -b ${frame.branchName}` }])
+
+// ── el commit preciso ────────────────────────────────────────────────────
+// NUNCA `git add -A`. Eso barre el trabajo sin commitear del operador dentro
+// del commit del workflow, en una rama que no estaba mirando. Se commitean
+// EXACTAMENTE los paths que el gate ya verificó contra el diff: el commit
+// contiene precisamente lo que el agente afirmó y el harness confirmó.
+async function commit(paths, message, label) {
+  if (!paths.length) throw new Error(`${label}: no hay ningún path verificado para commitear`)
+  const out = await probe([
+    { check: 'run', id: `${label}: add`, cmd: `git add -- ${paths.map(quote).join(' ')}` },
+    { check: 'run', id: `${label}: commit`, cmd: `git commit -m ${quote(message)}` },
+    { check: 'capture', id: `${label}: sha`, cmd: 'git rev-parse --short HEAD' },
+  ])
+  commitsMade.push({ label, sha: out.capture(`${label}: sha`), message, files: paths })
+}
+
+phase('Plan')
+const plan = await gated('plan',
+  phaseAgent('gated-planner', 'opus', PLAN, request, frame),
+  (c) => [
+    { check: 'exists',         id: 'el plan está en disco', paths: c.artifacts },
+    { check: 'min_bytes',      id: 'el plan no es un stub', paths: c.artifacts, bytes: 500 },
+    { check: 'no_placeholder', fields: ['summary'] },
+  ])
+
+// Commit 1 de 3: el spec queda en el registro antes de que exista una línea
+// de código que lo desdibuje. Las palabras son del planner.
+await commit(plan.artifacts, plan.commitMessage || `plan: ${plan.summary}`, 'commit_plan')
+
+// ... build → test (loop ≤3) → review → revise (loop ≤2) → retest ...
+// ... commit_build (changedFiles verificados) → changes → document → commit_docs
+</script>
+
+<script type="text/plain" id="src-boundary">
+// ── frontera de escritura ────────────────────────────────────────────────
+// tools: es una lista de capacidades. Bash corre git checkout y Write alcanza
+// cualquier path, así que ninguna lista de tools hace verdadero "esto no cambia
+// nada". Se mide contra git, después del hecho.
+
+const WRITES = {
+  'gated-framer':     [],                       // [] = solo lectura respecto del repo
+  'gated-planner':    ['specs/', `${HANDOFF}/`],
+  'gated-reviewer':   [],                       // un reviewer que no puede arreglar, no arregla en silencio
+  'gated-documenter': ['docs/', '**/*.md'],
+  'gated-builder':    null,                     // null = sin restricción, y el único
+}
+const PROTECTED = ['.claude/workflows/', '.claude/agents/', 'CLAUDE.md']
+
+function permitted(path, allow) {
+  if ((allow || []).some(p => matches(path, p))) return true  // nombrarlo es lo que lo desbloquea
+  if (PROTECTED.some(p => matches(path, p))) return false     // nadie edita a su propio evaluador
+  return allow === null
+}
+
+// Compara CHANGESETS, no escrituras. Un path que estaba sucio antes y está
+// limpio ahora fue REVERTIDO, y revertir es modificar - exactamente lo que un
+// interceptor de escrituras no ve. Aparecer, desaparecer y cambiar cuentan igual.
+function changedPaths(before, after) {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter(p => before[p] !== after[p]).sort()
+}
+
+async function guarded(agentType, name, run) {
+  const before = await fingerprint(`pre-${name}`)    // 1 llamada haiku
+  const claim = await run()
+  const after = await fingerprint(`post-${name}`)    // 1 llamada haiku
+
+  const touched = changedPaths(before, after)        // JS puro, gratis
+  const breaches = touched.filter(p => !permitted(p, WRITES[agentType]))
+  if (!breaches.length) return { claim, touched }
+
+  // Solo se deshace lo que el agente INTRODUJO. Un path ya sucio de antes se
+  // deja tal cual: el operador tenía trabajo sin commitear ahí, y descartarlo
+  // para ordenar es el mismo daño que esto previene, cometido por la limpieza.
+  await rollback(breaches.filter(p => !(p in before)))
+  const lost = breaches.filter(p => p in before && !(p in after))
+
+  // Un breach NO es una violación de gate: la escritura ya ocurrió y no hay
+  // re-prompt que la deshaga. La fase muere y se nombra cada path.
+  throw new Error(
+    `${agentType} escribió fuera de su frontera: ${breaches.join(', ')}` +
+    (lost.length ? ` · REVIRTIÓ trabajo sin commitear, irrecuperable: ${lost.join(', ')}` : ''))
+}
+</script>
+
+<script type="text/plain" id="src-accept">
+// Dos preguntas distintas, no una. Una fase que corrió la suite y la vio roja
+// HIZO SU TRABAJO: la fase pasa. El run no. Si el reporte no puede
+// distinguirlas, un run parcial se disfraza de completo.
+
+const accepted = test?.passed === true
+              && review?.approved === true
+              && unverified.length === 0
+
+return {
+  accepted,
+  reason: accepted ? '' : [
+    test?.passed !== true     && `la suite nunca volvió verde (exit ${test?.exitCode ?? '?'})`,
+    review?.approved !== true && `la revisión nunca aprobó: ${(review?.blocking || []).join(' · ')}`,
+    unverified.length         && `${unverified.length} claim(s) que el harness no pudo verificar`,
+  ].filter(Boolean).join(' · '),
+
+  // Dónde quedó todo. El run NO vuelve a la rama original: te deja parado en la
+  // suya, con lo que haya. Un run fallido es tan navegable como uno exitoso -
+  // el plan commiteado, el código sin commitear, y vos ya en el lugar correcto
+  // para seguir a mano. Volver solo te obligaría a buscar el nombre de la rama
+  // en un reporte para volver a entrar.
+  branch: frame.branchName,
+  branchedFrom: pre.capture('rama actual'),
+  leftYouOn: frame.branchName,
+  uncommitted: test?.passed ? [] : (build?.changedFiles || []),
+  commits: commitsMade,          // [{ label, sha, message, files }]
+
+  // La evidencia viaja con el veredicto, así que el reporte no puede afirmar
+  // nada que el harness no haya observado.
+  evidence: {
+    testCommand: frame.testCommand,
+    exitCode: test?.exitCode,
+    planPath: plan.artifacts[0],
+    docPath: document?.artifacts[0],
+    dirtyAtStart: pre.dirtyPaths,
+  },
+  gates: gateLog,                // qué se verificó, no solo que pasó
+  phases: phaseLog,              // nombre, owner, status, error
+}
+</script>
+
+<!-- ══════════════════════ RENDERERS ══════════════════════ -->
+<script type="module">
+  import { File } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+  const options = { theme: { light: "github-light", dark: "github-dark" }, themeType: "dark", overflow: "wrap" };
+  const renders = [
+    ["#code-gates",    "src-gates",    "gated-sdlc.js · envelopes y gates"],
+    ["#code-chain",    "src-chain",    "gated-sdlc.js · preflight, frame, rama y commits"],
+    ["#code-boundary", "src-boundary", "gated-sdlc.js · frontera de escritura"],
+    ["#code-accept",   "src-accept",   "gated-sdlc.js · contrato de aceptación"],
+  ];
+  for (const [target, sourceId, name] of renders) {
+    const container = document.querySelector(target);
+    const source = document.getElementById(sourceId);
+    if (!container || !source) continue;
+    new File(options).render({ containerWrapper: container, file: { name, contents: source.textContent.replace(/^\n/, "") } });
+  }
+</script>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const paint = document.createElement("canvas").getContext("2d");
+  function toRgba(color) {
+    paint.clearRect(0, 0, 1, 1); paint.fillStyle = "#000"; paint.fillStyle = color;
+    paint.fillRect(0, 0, 1, 1); return paint.getImageData(0, 0, 1, 1).data;
+  }
+  function compositeRgba(f, b) {
+    const fa = f[3] / 255, ba = b[3] / 255, alpha = fa + ba * (1 - fa);
+    if (alpha === 0) return [0, 0, 0, 0];
+    return [(f[0]*fa + b[0]*ba*(1-fa))/alpha, (f[1]*fa + b[1]*ba*(1-fa))/alpha, (f[2]*fa + b[2]*ba*(1-fa))/alpha, alpha*255];
+  }
+  function pageIsDark() {
+    const root = document.documentElement;
+    const rb = toRgba(getComputedStyle(root).backgroundColor);
+    const bb = document.body ? toRgba(getComputedStyle(document.body).backgroundColor) : [0,0,0,0];
+    const [r, g, b, a] = compositeRgba(bb, rb);
+    if (a > 0) return (0.2126*r + 0.7152*g + 0.0722*b) / 255 < 0.5;
+    const cs = getComputedStyle(root).colorScheme;
+    if (cs.includes("dark") && !cs.includes("light")) return true;
+    if (cs.includes("light") && !cs.includes("dark")) return false;
+    return darkQuery.matches;
+  }
+  const diagrams = [...document.querySelectorAll(".mermaid")].map((el) => ({ el, src: el.textContent }));
+  let applied, rendering = false, queued = false;
+  function queueRender() { queued = true; if (rendering) return; void render(); }
+  async function render() {
+    rendering = true;
+    try {
+      while (queued) {
+        queued = false;
+        const theme = pageIsDark() ? "dark" : "default";
+        if (theme === applied) continue;
+        mermaid.initialize({ startOnLoad: false, theme, securityLevel: "strict" });
+        for (const { el, src } of diagrams) { el.removeAttribute("data-processed"); el.textContent = src; }
+        try { await mermaid.run({ nodes: diagrams.map((d) => d.el) }); }
+        catch (error) { console.error("Mermaid diagram render failed:", error); return; }
+        applied = theme;
+      }
+    } finally { rendering = false; if (queued) queueRender(); }
+  }
+  if (document.readyState === "complete") queueRender();
+  else window.addEventListener("load", queueRender, { once: true });
+  const themeObserver = new MutationObserver(queueRender);
+  for (const el of [document.documentElement, document.body]) {
+    if (!el) continue;
+    themeObserver.observe(el, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
+  }
+  document.addEventListener("change", queueRender, true);
+  document.addEventListener("transitionend", ({ propertyName }) => { if (propertyName === "background-color") queueRender(); }, true);
+  darkQuery.addEventListener("change", queueRender);
+</script>
+
+</body>
+</html>

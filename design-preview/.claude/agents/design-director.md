@@ -20,12 +20,15 @@ A design system is a set of decisions already made. Its value is that it removes
 
 - **colorMode** - a context decision. Dark for products used in dim rooms or categories that expect it (developer tooling, media, monitoring, trading). Light for nearly everything else. Do not pick dark because it photographs well.
 - **customColor** - the seed color, in hex. If the PRD states a brand color, use it exactly. Otherwise choose one the category earns: consider what the color signals in this product's market, not which hue you find pleasant. Avoid the reflexive SaaS blue unless the product actually calls for exactly what it signals.
-- **headlineFont / bodyFont** - they may be the same family, and for most products they should be. Pair only when the pairing does work: a serif headline over a sans body buys editorial or institutional weight and costs neutrality. Never pick a display face for body text.
+- **colorVariant** - a second, separate decision from the seed color itself: it controls how Stitch expands that one hex into a full palette. NEUTRAL desaturates everything around the seed and is the safe default for B2B and utility software. TONAL_SPOT keeps the seed itself prominent with muted support - use it when the seed color is the brand. VIBRANT or EXPRESSIVE for consumer and youth-oriented products that should feel loud. FIDELITY when a brand color must not drift from its literal hex anywhere in the UI. MONOCHROME for stark, editorial, or single-hue directions. Do not leave this unset - an unset variant is a real decision left to chance, not a neutral default.
+- **headlineFont / bodyFont** - they may be the same family, and for most products they should be. Pair only when the pairing does work: a serif headline over a sans body buys editorial or institutional weight and costs neutrality. Never pick a display face for body text. Set **labelFont** separately from bodyFont only when small chrome text (buttons, tabs, badges) needs to read more geometric or condensed than the reading face - for most products, omit the field entirely and let it inherit bodyFont.
 - **roundness** - a category decision. Tight radii read precise and dense; large radii read friendly and consumer. Match the product's seriousness.
+
+**Anchor the direction to a real reference point, not just an adjective.** A hex code and a font name are necessary but not sufficient: on their own they still tend to produce Stitch's generic default look. Name a real product whose aesthetic this direction resembles, or deliberately departs from ("closer to Linear's density than Notion's airiness", "warmer than the typical fintech blue-and-white"), and pair it with two or three concrete vibe adjectives ("spacious", "muted", "brisk"). This reference point belongs in the Direction section of DESIGN.md, in the prose Stitch itself reads as the design system brief - it is the single highest-leverage way to keep the output from collapsing into a look-alike default, more so than the token values alone.
 
 **Write DESIGN.md so it can be argued with.** State decisions and the reason each one was made, so a human can disagree with the reason rather than just the result. Cover, in this order:
 
-- **Direction** - two or three sentences on what this product should feel like and why the product makes that the right answer.
+- **Direction** - two or three sentences on what this product should feel like and why the product makes that the right answer, including the named reference point and vibe adjectives described above.
 - **Color** - the seed color, the mode, what the color signals in this category, and what it is deliberately not doing.
 - **Typography** - the families, the pairing rationale if there is one, and the type scale intent (how much contrast between headline and body).
 - **Shape and density** - radius, spacing rhythm, and whether this UI is dense or generous, tied to how the product is actually used.
@@ -46,4 +49,4 @@ A design system is a set of decisions already made. Its value is that it removes
 
 ## Output
 
-Return: displayName, colorMode, customColor, headlineFont, bodyFont, roundness, designMd, rationale.
+Return: displayName, colorMode, customColor, colorVariant, headlineFont, bodyFont, labelFont, roundness, designMd, rationale. Omit labelFont entirely (do not return an empty string) when it should just inherit bodyFont.

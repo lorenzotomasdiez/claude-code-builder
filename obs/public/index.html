@@ -1,0 +1,344 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>workflow obs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #fff; --line: #e4e2dd; --ink: #1c1b19; --dim: #6f6c66;
+    --faint: #9a968e; --accent: #2f6f4f; --bad: #b4342a; --warn: #9a6b13; --live: #1f6feb;
+    --code: #f4f3f0;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a; --panel: #1c1e22; --line: #2c2f35; --ink: #e6e4e0; --dim: #9b978f;
+      --faint: #6c6862; --accent: #5fbd8b; --bad: #f0776c; --warn: #d8a343; --live: #62a0ff;
+      --code: #121316;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-columns: 310px 1fr; height: 100vh; overflow: hidden;
+  }
+  @media (max-width: 820px) { body { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; } }
+
+  /* ── sidebar ─────────────────────────────────────────────────────────── */
+  #side { border-right: 1px solid var(--line); overflow-y: auto; background: var(--panel); }
+  #side header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 2; }
+  #side h1 { margin: 0 0 2px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+  #meta { font-size: 11.5px; color: var(--faint); font-family: var(--mono); }
+  select { width: 100%; margin-top: 9px; padding: 5px 7px; background: var(--bg); color: var(--ink);
+           border: 1px solid var(--line); border-radius: 5px; font: inherit; font-size: 12.5px; }
+  .run { padding: 9px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .run:hover { background: var(--bg); }
+  .run.sel { background: var(--bg); box-shadow: inset 3px 0 0 var(--ink); }
+  .run .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .run .wf { font-weight: 600; font-size: 13px; }
+  .run .sub { color: var(--faint); font-size: 11.5px; font-family: var(--mono); margin-top: 2px;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── main ────────────────────────────────────────────────────────────── */
+  #main { overflow-y: auto; padding: 22px 26px 60px; }
+  #main > * { max-width: 1000px; }
+  h2 { font-size: 19px; margin: 0 0 3px; }
+  .path { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin-bottom: 16px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 22px; padding: 13px 0; border-block: 1px solid var(--line); margin-bottom: 20px; }
+  .stat b { display: block; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+          font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+  .ok { color: var(--accent); } .no { color: var(--bad); } .warnc { color: var(--warn); }
+  .livep { color: var(--live); }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+         margin-right: 5px; vertical-align: middle; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  .note { border-left: 3px solid var(--warn); background: var(--panel); padding: 10px 14px;
+          margin-bottom: 20px; color: var(--dim); font-size: 13px; }
+
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--dim);
+       margin: 26px 0 10px; font-weight: 600; }
+
+  .phase { border: 1px solid var(--line); border-radius: 7px; margin-bottom: 9px; background: var(--panel); overflow: hidden; }
+  .phase > .hd { padding: 8px 13px; display: flex; align-items: baseline; gap: 9px; border-bottom: 1px solid var(--line); }
+  .phase .idx { font-family: var(--mono); color: var(--faint); font-size: 11.5px; }
+  .phase .ttl { font-weight: 600; }
+  .phase .det { color: var(--faint); font-size: 11.5px; margin-left: auto; text-align: right; }
+  .phase.empty > .hd { opacity: .55; }
+
+  .agent { padding: 7px 13px; border-top: 1px solid var(--line); cursor: pointer; display: flex;
+           gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .agent:first-child { border-top: none; }
+  .agent:hover { background: var(--bg); }
+  .agent .lbl { font-family: var(--mono); font-size: 12px; }
+  .agent .ty { color: var(--dim); font-size: 11.5px; }
+  .agent .rt { margin-left: auto; display: flex; gap: 13px; color: var(--faint);
+               font-size: 11.5px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .body { padding: 0 13px 12px 13px; border-top: 1px dashed var(--line); }
+  .body.hide { display: none; }
+
+  table.checks { width: 100%; border-collapse: collapse; margin-top: 9px; font-size: 12.5px; }
+  table.checks td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--line); }
+  table.checks td.st { width: 1%; white-space: nowrap; font-family: var(--mono); font-weight: 600; }
+  table.checks td.id { font-family: var(--mono); width: 34%; word-break: break-word; }
+  table.checks tr.bad { background: color-mix(in srgb, var(--bad) 9%, transparent); }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 5px; padding: 9px 11px;
+        overflow-x: auto; font-family: var(--mono); font-size: 11.5px; margin: 8px 0 0; white-space: pre-wrap;
+        word-break: break-word; max-height: 320px; overflow-y: auto; }
+  .lbl2 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin-top: 11px; }
+
+  button.load { font: inherit; font-size: 12px; padding: 3px 10px; border: 1px solid var(--line);
+                background: var(--bg); color: var(--dim); border-radius: 5px; cursor: pointer; }
+  button.load:hover { color: var(--ink); }
+  .call { border: 1px solid var(--line); border-radius: 5px; margin-top: 5px; overflow: hidden; }
+  .call.err { border-color: var(--bad); }
+  .chd { display: flex; gap: 9px; align-items: baseline; padding: 5px 9px; cursor: pointer; font-size: 12.5px; }
+  .chd:hover { background: var(--bg); }
+  .chd .n { color: var(--faint); font-family: var(--mono); font-size: 11px; min-width: 20px; }
+  .chd .nm { font-weight: 600; font-family: var(--mono); font-size: 12px; min-width: 96px; }
+  .chd .gist { font-family: var(--mono); font-size: 11.5px; color: var(--dim);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .cbody { padding: 0 11px 10px; border-top: 1px dashed var(--line); }
+  .cbody.hide { display: none; }
+
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .empty-state { color: var(--faint); padding: 60px 0; text-align: center; }
+</style>
+
+<aside id="side">
+  <header>
+    <h1>workflow obs</h1>
+    <div id="meta">loading</div>
+    <select id="filter"><option value="">every workflow</option></select>
+  </header>
+  <div id="list"></div>
+</aside>
+<main id="main"><div class="empty-state">pick a run</div></main>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+const dur = (ms) => {
+  if (ms == null) return '-'
+  const s = Math.round(ms / 1000)
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+}
+const num = (n) => n == null ? '-' : n.toLocaleString('en-US')
+const ago = (t) => {
+  if (!t) return ''
+  const m = (Date.now() - t) / 60000
+  if (m < 1) return 'just now'
+  if (m < 60) return `${Math.round(m)}m ago`
+  const h = m / 60
+  if (h < 24) return `${Math.round(h)}h ago`
+  return `${Math.round(h / 24)}d ago`
+}
+
+let runs = [], selected = null, open = new Set(), filter = ''
+
+// Only two things change on their own: a live run's contents, and which runs
+// exist. Everything else is a finished record that cannot change, so a poll
+// that redrew the whole page would be throwing away scroll position and open
+// panels for nothing.
+async function loadList() {
+  const r = await fetch('/api/runs').then(r => r.json())
+  runs = r.runs
+  const sel = $('#filter')
+  if (sel.options.length <= 1) {
+    for (const w of r.workflows) sel.add(new Option(w, w))
+  }
+  const live = runs.filter(x => x.live).length
+  $('#meta').textContent = `${runs.length} runs${live ? ` · ${live} live` : ''}`
+  drawList()
+}
+
+function drawList() {
+  const shown = filter ? runs.filter(r => r.workflow === filter) : runs
+  $('#list').innerHTML = shown.map(r => {
+    const badge = r.live ? `<span class="pill livep"><span class="dot"></span>live</span>`
+      : r.accepted === true ? `<span class="pill ok">accepted</span>`
+      : r.accepted === false ? `<span class="pill no">declined</span>`
+      : r.status === 'abandoned' ? `<span class="pill warnc">abandoned</span>`
+      : r.status === 'failed' ? `<span class="pill no">failed</span>`
+      : r.status === 'killed' ? `<span class="pill warnc">killed</span>`
+      : ''
+    return `<div class="run ${r.id === selected ? 'sel' : ''}" data-id="${r.id}">
+      <div class="top"><span class="wf">${esc(r.workflow || 'unknown')}</span>${badge}</div>
+      <div class="sub">${esc(r.project)} · ${r.live ? `${r.agentsDone}/${r.agentCount} agents` : dur(r.durationMs)} · ${ago(r.startTime)}</div>
+    </div>`
+  }).join('') || `<div class="empty-state">nothing here</div>`
+}
+
+async function loadRun(id) {
+  selected = id
+  drawList()
+  const d = await fetch(`/api/runs/${id}`).then(r => r.json())
+  if (selected !== id) return   // the user moved on while this was in flight
+  draw(d)
+}
+
+function checksTable(checks) {
+  if (!checks || !checks.length) return ''
+  return `<table class="checks">${checks.map(c => `
+    <tr class="${c.ok ? '' : 'bad'}">
+      <td class="st ${c.ok ? 'ok' : 'no'}">${c.ok ? 'ok' : 'FAIL'}</td>
+      <td class="id">${esc(c.id)}</td>
+      <td><span class="mono">${esc(c.observed).slice(0, 600) || '<em>no output</em>'}</span></td>
+    </tr>`).join('')}</table>`
+}
+
+function agentRow(a) {
+  const key = a.agentId
+  const isOpen = open.has(key)
+  const checks = a.checks
+  const failed = checks ? checks.filter(c => !c.ok).length : 0
+  const state = a.state === 'running'
+    ? `<span class="pill livep"><span class="dot"></span>running</span>`
+    : failed ? `<span class="pill no">${failed} failed</span>`
+    : checks ? `<span class="pill ok">${checks.length} ok</span>` : ''
+
+  return `<div class="agent" data-agent="${key}">
+      <span class="lbl">${esc(a.label || a.agentType || key)}</span>
+      <span class="ty">${esc(a.model || '')}${a.attempt > 1 ? ` · attempt ${a.attempt}` : ''}</span>
+      ${state}
+      <span class="rt">
+        ${a.tokens != null ? `<span>${num(a.tokens)} tok</span>` : ''}
+        ${a.durationMs != null ? `<span>${dur(a.durationMs)}</span>` : ''}
+      </span>
+    </div>
+    <div class="body ${isOpen ? '' : 'hide'}" data-body="${key}">
+      ${a.summary ? `<div class="lbl2">summary</div><div>${esc(a.summary)}</div>` : ''}
+      ${checks ? `<div class="lbl2">checks</div>${checksTable(checks)}` : ''}
+      ${!checks && a.resultPreview ? `<div class="lbl2">result</div><pre>${esc(a.resultPreview)}</pre>` : ''}
+      <div class="lbl2">tool calls${a.toolCalls != null ? ` (${a.toolCalls})` : ''}</div>
+      <div class="tools" data-tools="${key}"><button class="load" data-load="${key}">show what it ran</button></div>
+      ${a.promptPreview ? `<div class="lbl2">prompt</div><pre>${esc(a.promptPreview)}</pre>` : ''}
+    </div>`
+}
+
+// The one-line summary of a call, which is what makes a list of 26 of them
+// readable: for Bash the command, for a file tool the path, and for anything
+// else whichever field is most likely to be the subject.
+const gist = (c) => {
+  const i = c.input || {}
+  return i.command || i.file_path || i.path || i.pattern || i.url ||
+    (typeof i === 'object' ? JSON.stringify(i).slice(0, 160) : String(i))
+}
+
+async function loadTools(runId, agentId) {
+  const box = document.querySelector(`[data-tools="${agentId}"]`)
+  if (!box) return
+  box.innerHTML = '<span style="color:var(--faint)">reading the transcript...</span>'
+  const r = await fetch(`/api/runs/${runId}/agents/${agentId}/tools`).then(r => r.json()).catch(() => null)
+  if (!r || !r.calls) { box.innerHTML = '<span class="no">no transcript on disk for this agent</span>'; return }
+  box.innerHTML = r.calls.map((c, n) => `
+    <div class="call ${c.isError ? 'err' : ''}">
+      <div class="chd" data-call="${agentId}-${n}">
+        <span class="n">${n + 1}</span>
+        <span class="nm">${esc(c.name)}</span>
+        <span class="gist">${esc(gist(c))}</span>
+        ${c.isError ? '<span class="pill no">error</span>' : ''}
+      </div>
+      <div class="cbody hide" data-callbody="${agentId}-${n}">
+        <div class="lbl2">input</div><pre>${esc(JSON.stringify(c.input, null, 2))}</pre>
+        ${c.result != null ? `<div class="lbl2">result${c.truncated ? ' (first 4000 chars)' : ''}</div><pre>${esc(c.result)}</pre>`
+          : '<div class="lbl2">result</div><div style="color:var(--faint)">nothing came back - the agent stopped before this returned</div>'}
+      </div>
+    </div>`).join('') || '<span style="color:var(--faint)">this agent called no tools</span>'
+}
+
+function draw(d) {
+  const badge = d.live ? `<span class="pill livep"><span class="dot"></span>live</span>`
+    : d.accepted === true ? `<span class="pill ok">accepted</span>`
+    : d.accepted === false ? `<span class="pill no">not accepted</span>`
+    : `<span class="pill warnc">${esc(d.status)}</span>`
+
+  const failedChecks = (d.agents || []).flatMap(a => (a.checks || []).filter(c => !c.ok).map(c => ({ ...c, from: a.label || a.agentType })))
+
+  // Ungrouped agents are the live case: the phase mapping does not exist yet.
+  const groups = d.phases && d.phases.length
+    ? d.phases.map(p => {
+        const mine = d.agents.filter(a => a.phaseIndex === p.index)
+        return `<div class="phase ${mine.length ? '' : 'empty'}">
+          <div class="hd"><span class="idx">${p.index}</span><span class="ttl">${esc(p.title)}</span>
+            <span class="det">${esc(p.detail || '')}</span></div>
+          ${mine.map(agentRow).join('')}
+        </div>`
+      }).join('')
+    : `<div class="phase">${(d.agents || []).map(agentRow).join('') || '<div class="agent">no agent has started yet</div>'}</div>`
+
+  $('#main').innerHTML = `
+    <h2>${esc(d.workflow || 'unknown workflow')} ${badge}</h2>
+    <div class="path">${esc(d.id)} · ${esc(d.project)}${d.runId ? ` · runId ${esc(d.runId)}` : ''}</div>
+    ${d.request ? `<div class="note" style="border-color:var(--line)">${esc(d.request)}</div>` : ''}
+
+    <div class="stats">
+      <div class="stat"><b>${d.live ? `${d.agentsDone}/${d.agentCount}` : num(d.agentCount)}</b><span>agents</span></div>
+      <div class="stat"><b>${dur(d.durationMs)}</b><span>duration</span></div>
+      <div class="stat"><b>${num(d.totalTokens)}</b><span>tokens</span></div>
+      <div class="stat"><b>${num(d.totalToolCalls)}</b><span>tool calls</span></div>
+      <div class="stat"><b class="${failedChecks.length ? 'no' : 'ok'}">${failedChecks.length}</b><span>failed checks</span></div>
+    </div>
+
+    ${d.partial ? `<div class="note">${esc(d.partialReason)}</div>` : ''}
+    ${d.reason ? `<div class="note" style="border-color:var(--bad)">${esc(d.reason)}</div>` : ''}
+
+    ${failedChecks.length ? `<h3>every refuted claim</h3>
+      <div class="phase"><div class="body">${checksTable(failedChecks)}</div></div>` : ''}
+
+    <h3>phases</h3>${groups}
+
+    ${d.commits && d.commits.length ? `<h3>commits</h3><ul class="plain">${d.commits.map(c =>
+      `<li><span class="mono">${esc(c.sha)}</span> ${esc(c.message)} <span style="color:var(--faint)">${(c.files || []).length} files</span></li>`).join('')}</ul>` : ''}
+
+    ${d.uncommitted && d.uncommitted.length ? `<h3>left uncommitted</h3><ul class="plain">${
+      d.uncommitted.map(f => `<li class="mono">${esc(f)}</li>`).join('')}</ul>` : ''}
+
+    ${d.logs && d.logs.length ? `<h3>log</h3><pre>${d.logs.map(esc).join('\n')}</pre>` : ''}
+  `
+}
+
+// ── events ───────────────────────────────────────────────────────────────────
+$('#list').addEventListener('click', e => {
+  const el = e.target.closest('.run')
+  if (el) { open.clear(); loadRun(el.dataset.id) }
+})
+$('#filter').addEventListener('change', e => { filter = e.target.value; drawList() })
+$('#main').addEventListener('click', e => {
+  // Innermost first: a click on a tool call sits inside an agent row's body,
+  // and toggling the agent shut underneath it would be maddening.
+  const load = e.target.closest('[data-load]')
+  if (load) { loadTools(selected, load.dataset.load); return }
+
+  const call = e.target.closest('[data-call]')
+  if (call) {
+    const b = document.querySelector(`[data-callbody="${call.dataset.call}"]`)
+    if (b) b.classList.toggle('hide')
+    return
+  }
+
+  const el = e.target.closest('.agent')
+  if (!el || !el.dataset.agent) return
+  const key = el.dataset.agent
+  const body = document.querySelector(`[data-body="${key}"]`)
+  if (!body) return
+  body.classList.toggle('hide')
+  body.classList.contains('hide') ? open.delete(key) : open.add(key)
+})
+
+// A finished run is immutable, so it is never re-fetched. Only the list and a
+// live run are polled, which keeps this at two small reads a few seconds apart
+// instead of re-reading 195 records forever.
+loadList()
+setInterval(async () => {
+  await loadList()
+  const cur = runs.find(r => r.id === selected)
+  if (cur && cur.live) loadRun(selected)
+}, 4000)
+</script>

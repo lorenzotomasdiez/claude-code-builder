@@ -25,7 +25,7 @@ Frame (1 agent, opus - resolve the tag, learn how this repo runs tests, emit the
       -> Green (1 agent, sonnet - implement until they pass)
         -> Verify (haiku) -> Adjudicate (1 agent per failure, sonnet) -> Fix (routed by ownership)
              └─ exactly one retry, then give up loudly
-          -> Browser (opus writes one journey, haiku runner drives playwright-cli + screenshots)
+          -> Browser (haiku preflight gate -> opus writes one journey -> haiku runner drives playwright-cli + screenshots)
             -> Report (sonnet, text only, saved nowhere)
 ```
 
@@ -71,6 +71,25 @@ After the red phase, before any implementation exists, a test that **passes** is
 
 It should be impossible - the code it tests does not exist yet - so a green result almost always means the test asserts nothing: a skipped test, a tautology, a swallowed error. This is the one defect no later phase can catch, because from the green phase onward a hollow test is indistinguishable from a passing one.
 
+## What each agent is allowed to know
+
+A forensic audit of a real run (`reports/context-bloat-forensics/2026-07-28-chiri-markdown-ai-tdd-builder.md`) found that most of this workflow's cost was not thinking - it was the same text arriving in agents that could not act on it.
+Four rules came out of that, and they are load-bearing rather than cosmetic.
+
+**The shared writer prefix is kept small, and the implementation brief is not in it.**
+Ordering a large shared block first is the standard prompt-cache trick (see `../PROMPT_CACHE_ORDERING.md`), and it does not work for a fan-out launched in a single instant: all N writers race the cache, all N miss, and all N pay to *write* the prefix. A shared block is therefore billed per agent, not once. So the question for anything in that prefix is not "is it useful?" but "is it worth N times its size?" - and the implementation brief is not, because writers are forbidden from writing production code. In the audited run it cost roughly 8k tokens per writer, eight times over, to describe work none of them was allowed to do.
+
+**Each writer gets one convention exemplar, chosen by what it is writing.**
+The framer reports a unit exemplar and an e2e exemplar separately, and the script picks one per test from its output path. Handing every writer both means half of them read a spec in a framework they are not using.
+
+**The verifier reports only what it captured.**
+Its results come from the runner's output, which is why the framer is required to supply a single-file command with a *verbose* reporter: a default reporter prints counts, and an agent handed counts will open the test files to attribute them. That was five full-file reads per verification round. The same rule forbids re-running a command to re-extract an error already in context, and requires the reported `command` to be one that actually appears in the transcript.
+
+**Expensive spawns are gated by a cheap check.**
+The browser phase preflights `playwright-cli` and app reachability with a few-hundred-token probe before an opus author writes a journey for a machine that cannot run it. In the audited run, skipping that check cost an opus journey plus a ~10k-token runner prompt to produce `blocked`.
+
+The same instinct explains a change that is *not* here: the adjudicator still runs on every failure, even ones the implementer already explained. Skipping it would trade the workflow's one independent judgment for a token saving, so instead the implementer's diagnosis is passed in as `<implementer_hypothesis>` - a claim to audit, explicitly untrusted, which saves the cold start without giving the fox the henhouse.
+
 ## How it differs from `feature-implementer`
 
 Both do red-green TDD with a verified red and an independent verifier. They are not interchangeable.
@@ -94,7 +113,7 @@ Reach for this when you want one feature built and demonstrably working today. R
 - `.claude/agents/tdd-dev-implementer.md` - sonnet. The only agent that writes production code. Forbidden from touching any test file.
 - `.claude/agents/tdd-dev-adjudicator.md` - sonnet, no write tools at all. Rules on one failure.
 - `.claude/agents/tdd-dev-e2e-author.md` - opus. Writes one browser journey as executable English steps, never code, never softened to pass.
-- `.claude/agents/tdd-dev-browser-runner.md` - haiku. Drives `playwright-cli`, screenshots every step, reports `blocked` honestly when the tooling is absent.
+- `.claude/agents/tdd-dev-browser-runner.md` - haiku. Drives `playwright-cli`, screenshots every step, reports `blocked` honestly when the tooling is absent. Also runs in a stripped-down preflight mode - two shell commands, no session, no screenshots - that gates the phase before the opus journey author is ever spawned.
 - `.claude/agents/tdd-dev-reporter.md` - sonnet, **no tools**. Writes the text report and cannot save it even by accident.
 - `.claude/workflows/tdd-developer.js` - the orchestration script.
 - `.claude/commands/tdd-developer.md` - the `/tdd-developer <tag>` entry point.
@@ -121,9 +140,15 @@ Screenshots land in `docs/proof/<slug>/`. Everything else is source code in your
 
 ## Smoke test
 
-**Status: not yet run.** The package is anatomy-clean (`node scripts/validate-workflow.mjs tdd-developer` exits 0), the script parses (`node --check`), and its schemas pass `schema-lint`. Nothing else is proven.
+**Status: PASS on 2026-07-28, then edited afterwards. The edits are unverified.**
 
-It could not be run in the session that built it: this repo snapshots the subagent registry at session start, so the eight agent definitions are not resolvable until a later session. The same constraint is recorded against `tech-blueprint` and `functional-test-plan` in `STATUS.md`.
+The run: an external project (`chiri-markdown-ai`), tag `FR-8: Model selector`, `maxTests: 8`. Every phase executed - Frame, Red (8 parallel writers), Verify red, Green, Verify -> Adjudicate -> Fix, Browser, Report. All 19 agents returned and every schema validated, which is what a smoke test is for. The browser phase reported `blocked` because `playwright-cli` was not installed: the honest outcome, though it cost an opus journey to discover, which is what the new preflight gate exists to prevent.
+
+That run's transcripts were then audited for context cost. The findings and the resulting changes are in `reports/context-bloat-forensics/2026-07-28-chiri-markdown-ai-tdd-builder.md` and in "What each agent is allowed to know" above.
+
+**The changes made after that audit have not themselves been run.** They touch the framer's output schema (`unitExampleFile`/`e2eExampleFile` replacing `exampleTestFile`), the writer prompts, the verifier's contract, the adjudicator's verdict schema (`id` no longer required), the implementer's `diagnosed` field, and a new browser preflight gate. The script parses and the anatomy validates; nothing beyond that is proven about them. The next real run is the test.
+
+Two things from the audit are **known open and not fixed**: nothing downstream acts on `suspectHollow`, so a hollow test still reaches the final report counted as passing; and `suiteGreenBefore: false` is logged as a warning but does not gate the run, so a repo that was already red produces a report whose green means less than it appears to.
 
 There is a second, larger reason it was not run here: **this workflow writes production code**, and this repo is a library of workflow definitions with no application to build a navigation bar into. A meaningful smoke test needs a small throwaway project with a real test runner - not this repo. Running it here would either fail at framing (no test framework) or start writing source files into a documentation repo.
 
@@ -140,5 +165,7 @@ Specific things to watch, because they are the most likely to be wrong:
 - **Does the adjudicator actually pick a side**, or does it hedge? A hedged verdict routes the fix nowhere and wastes the single retry.
 - **Does the one-retry cap hold?** Give it a deliberately impossible test and confirm it stops after two attempts and reports it unsolved rather than looping.
 - **Does the browser runner report `blocked` honestly** when `playwright-cli` is absent, rather than claiming a pass?
+- **Does the preflight gate fire before the journey author?** On a machine without `playwright-cli`, the phase should log a skip and spawn no opus agent at all.
+- **Does the framer respect the test budget?** It should emit at most `maxTests` entries, so `droppedByCap` comes back empty rather than listing scenarios it planned in full.
 
 Record what was run, the phases, and pass or fail here. If it breaks, record the blocker and the evidence rather than editing this section to look clean.
