@@ -271,6 +271,26 @@ Redirecting the suite's output to a file also keeps a large test log out of the 
 
 **PASSED, with fixes landed since that are not re-verified.** Six real runs on record, in `my-rag`. Runs 3 and 5 completed; runs 1, 2, 4 and 6 each exposed a defect, and all six are kept below, because what the failures exposed is why the passes work. The most recent run is the one to read first.
 
+### What five more runs cost, and the three fixes they bought
+
+Eleven runs on record now, not six. Two of the unrecorded ones passed, including the first pass in a **production repo** (`divann.com`, three real GitHub issues, three commits, 158 minutes). Three failed for three different reasons, and only one was a defect.
+
+**`or7k2qm` - the framer refused, and that is the system working.** The request was "build it", with an empty handoff, no previous envelope and twenty-plus open issues in the repo. It returned `status: fail` in two minutes rather than picking one. No fix needed.
+
+**`or8w3fx` - the fail-closed path was exercised for the first time.** A `commit_build` probe never spawned: `state: "error"`, no `agentId`, no result. `agent()` returned null and the script refused to treat six unreported checks as six passes. The run was lost, safely. Nothing false was believed.
+
+**`k7m2qx` - `status: fail` used to mean "I reject this".** Review 1 returned `status: success, approved: false`, the builder revised, and review 2 found one genuine remaining gap - a missing test for one guard - and filed it as `status: 'fail'`, which kills the phase outright. A revision round was sitting unused. An hour of work ended over a one-line finding, because the verdict was reported in the wrong field.
+
+`status` is about the agent; `approved` is about the code. That is now in the reviewer's contract with the failure that taught it, and backed mechanically: `verdict_consistent` refutes a `status: 'fail'` that arrives with a complete verdict, and `gated()` defers its early throw for exactly that shape so the correction can happen. A bare failure with no verdict still dies at once - `or7k2qm` must stay a two-minute run, not a retry.
+
+**The builder had no way to avoid busy-waiting.** Measured on a live run: 85 minutes in one build phase, 647 tool calls, a context that grew to 644,083 tokens, and **seven shell polls killed at exactly Bash's two-minute default timeout**, each having learned nothing.
+
+Its `tools:` allowlist was `Read, Write, Edit, Grep, Glob, Bash`. It could start a background job - `run_in_background` is a `Bash` parameter - but `BashOutput` was not in the list, so it had no way to read the result. `until ! pgrep ...; do sleep 10; done` was the only mechanism available to it. The same class of defect as `design-preview`'s allowlist excluding MCP.
+
+`BashOutput` and `KillShell` are in the list now, with a rule naming the anti-pattern. And a second finding from the same measurement: the builder was running the **full suite** itself, which the Test phase then ran again - 26 of those 85 minutes were the suite and the waiting around it. It now verifies narrowly (typecheck, or the one test file it touched) and leaves the suite to the phase that exists for it.
+
+The remaining 65% of that turn was model inference over an enormous context, which no prompt fixes. That is a structural question about slicing the build phase, recorded as open rather than patched.
+
 ### Run 6: NOT ACCEPTED - every check green, and the run still died
 
 `my-rag`, 2026-08-14, Phase 4 of that repo's `PRD.md` - the eval question set, `rag eval`, and config-driven retrieval knobs. `runId: ph4k7dq`, `testCommand: bun test`, branch `feat/phase-4-sharpening`.
@@ -451,7 +471,7 @@ git reported the deletion; the filesystem could not. The builder had no legal an
 |---|---|
 | Anatomy | `node scripts/validate-workflow.mjs gated-sdlc` |
 | The script parses | `node --check`, with the async wrapper the Workflow tool supplies |
-| Workflow logic, 83 assertions | `node .claude/hooks/logic-selftest.mjs` - the my-rag file lists verbatim, the suite redirect executed against a real shell, and a real git repo proving a moved file's deletion is reported and stageable |
+| Workflow logic, 99 assertions | `node .claude/hooks/logic-selftest.mjs` - the my-rag file lists verbatim, the suite redirect executed against a real shell, and a real git repo proving a moved file's deletion is reported and stageable |
 | Write boundary, 25 assertions | `node .claude/hooks/boundary-selftest.mjs` - the hook's exit codes, plus both copies of the boundary table in sync |
 
 Both self-tests extract the real functions out of the source rather than copying them, so they cannot drift from the code they check.

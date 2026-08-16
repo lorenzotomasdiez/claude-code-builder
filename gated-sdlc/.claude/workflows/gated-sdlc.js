@@ -444,6 +444,29 @@ const PURE = {
     if (!c.approved && !blocking.length && !unmet.length) {
       out.push('approved=false but no blocking item or unmet requirement was given')
     }
+    // `status` is about the agent, `approved` is about the code, and a reviewer
+    // that conflates them ends the run instead of triggering a revision.
+    //
+    // `status: 'fail'` means "I could not review" and kills the phase outright -
+    // no revise, no second look. `approved: false` with blocking items is the
+    // loop working. One real run was lost to this exact confusion: review 1
+    // returned success/false and the builder revised correctly, then review 2
+    // found one genuine remaining gap - a missing test for one guard - and
+    // reported it as `status: 'fail'`. A revision round was sitting unused.
+    //
+    // Caught here rather than left to the prompt, because a prompt is a soft
+    // guarantee and this costs an hour of work when it slips. A refutation
+    // costs one more review call and the retry carries the observation
+    // verbatim, so the reviewer is told precisely what it did.
+    if (c.status === 'fail' && typeof c.approved === 'boolean' && (blocking.length || unmet.length)) {
+      out.push(
+        `status='fail' while returning a complete verdict (approved=${c.approved}, ` +
+        `${blocking.length} blocking item(s), ${unmet.length} unmet requirement(s)). ` +
+        `status is about YOU - it is 'success' whenever you reached a verdict at all, ` +
+        `however negative. Rejecting the code is approved=false with blocking items, and ` +
+        `that routes to a revision. status='fail' means you could NOT review, and it ends ` +
+        `the run with the code uncommitted.`)
+    }
     return out
   },
   counts_match: (c, { field, count }) => {
@@ -546,10 +569,30 @@ The harness checked that against the repo and observed:
 Fix the work, or fix the report if the report is what is wrong.
 Emit the complete JSON again.`
 
+// `status: 'fail'` normally ends the phase immediately, and should: an agent
+// that says it could not do its job has produced nothing worth checking, and
+// gating it would spend an expensive retry to be told the same thing. That is
+// the right outcome for a framer handed "build it" with no antecedent - it died
+// in two minutes instead of guessing, which is the system working.
+//
+// The exception is an envelope that CONTRADICTS its own failure: a reviewer
+// that reports `status: 'fail'` while returning a complete verdict did do its
+// job, and just filed the result under the wrong field. Killing the run there
+// throws away a revision round that was sitting unused - which is exactly how
+// one run ended over a single missing test. So a self-contradicting claim gets
+// its one cold retry like any other refuted claim, and `verdict_consistent`
+// supplies the correction verbatim.
+const contradictsOwnFailure = (c) =>
+  c.status === 'fail' &&
+  typeof c.approved === 'boolean' &&
+  Boolean((c.blocking || []).length || (c.findings || []).some(f => !f.met))
+
 async function gated(name, agentType, produce, checksFor) {
   const claim = await produce()
   if (!claim) throw new Error(`${name}: the agent died - there is no claim to verify`)
-  if (claim.status === 'fail') throw new Error(`${name}: the agent reported status=fail - ${claim.summary}`)
+  if (claim.status === 'fail' && !contradictsOwnFailure(claim)) {
+    throw new Error(`${name}: the agent reported status=fail - ${claim.summary}`)
+  }
 
   const first = await gate(claim, checksFor(claim), name)
   let final = claim
@@ -566,6 +609,14 @@ async function gated(name, agentType, produce, checksFor) {
     }
     final = retry
     report = second.report
+  }
+
+  // The deferral above buys a self-contradicting claim one correction, not a
+  // free pass. If the retry still reports failure, the phase dies here as it
+  // would have at the top - a claim that says its own author failed is not a
+  // claim any later phase gets to act on, however well it validates.
+  if (final.status === 'fail') {
+    throw new Error(`${name}: the agent reported status=fail - ${final.summary}`)
   }
 
   // The boundary is judged on the FINAL tree against the state pinned before

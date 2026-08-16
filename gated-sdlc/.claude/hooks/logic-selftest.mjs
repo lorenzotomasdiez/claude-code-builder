@@ -50,11 +50,12 @@ const pieces = [
   grab(/const committable = \(paths\) =>[\s\S]*?\.sort\(\)/, 'committable'),
   grab(/const redirected = [^\n]+/, 'redirected'),
   grab(/const PURE = \{[\s\S]*?\n\}/, 'PURE'),
+  grab(/const contradictsOwnFailure = \(c\) =>[\s\S]*?\n\n/, 'contradictsOwnFailure'),
 ]
 
 const M = await import(`data:text/javascript,${encodeURIComponent(
   pieces.join('\n') +
-  '\nexport { stripExit, parseFingerprint, changedPaths, permitted, matches, shq, shellSafe, committable, redirected, PURE }')}`)
+  '\nexport { stripExit, parseFingerprint, changedPaths, permitted, matches, shq, shellSafe, committable, redirected, PURE, contradictsOwnFailure }')}`)
 
 let failures = 0
 const eq = (name, actual, expected) => {
@@ -254,6 +255,69 @@ console.log('\nevery phase whose only agent is a probe still names itself')
     eq(`${title} is used by a phase() call or a probe opt`,
       SRC.includes(`phase('${title}')`) || SRC.includes(`phase: '${title}'`), true)
   }
+}
+
+// `status` is about the agent, `approved` is about the code. A reviewer that
+// conflates them ends the run instead of triggering a revision, and one real
+// run was lost that way: review 1 returned success/false and the builder
+// revised correctly, then review 2 found one missing test and filed it as
+// status='fail' with a revision round still unused.
+console.log('\na reviewer that rejects is not a reviewer that failed')
+{
+  const v = (c) => M.PURE.verdict_consistent(c, {})
+
+  eq('rejecting with a reason is clean',
+    v({ status: 'success', approved: false, blocking: ['R-31 has no test'], findings: [] }), [])
+  eq('approving cleanly is clean',
+    v({ status: 'success', approved: true, blocking: [], findings: [{ requirement: 'R-01', met: true }] }), [])
+
+  const conflated = v({ status: 'fail', approved: false, blocking: ['R-31 has no test'], findings: [] })
+  eq('status=fail alongside a real verdict is refuted', conflated.length, 1)
+  eq('the refusal explains which field is which', /status is about YOU/.test(conflated[0]), true)
+
+  // An agent that genuinely could not work returns no verdict, and must keep
+  // dying immediately rather than buying an expensive retry to say so again.
+  // Tested on the function that actually makes that call, not on PURE - the
+  // gate never sees a bare failure, because gated() throws first.
+  eq('a framer that just failed still dies at once',
+    M.contradictsOwnFailure({ status: 'fail', summary: 'no antecedent for "build it"' }), false)
+  eq('a success is never treated as a contradiction',
+    M.contradictsOwnFailure({ status: 'success', approved: false, blocking: ['x'] }), false)
+  eq('fail with a verdict IS a contradiction',
+    M.contradictsOwnFailure({ status: 'fail', approved: false, blocking: ['R-31 has no test'] }), true)
+  eq('fail with an unmet finding counts too',
+    M.contradictsOwnFailure({ status: 'fail', approved: false, blocking: [], findings: [{ requirement: 'R-31', met: false }] }), true)
+  eq('the old contradictions still fire',
+    v({ status: 'success', approved: true, blocking: ['x'], findings: [] }).length, 1)
+
+  // The early throw in gated() runs BEFORE the gate, so the check above is
+  // unreachable unless that throw defers for exactly this shape.
+  // Asserted on the THROW, not on the function's existence. The first version
+  // of this checked that `contradictsOwnFailure` appeared anywhere in the
+  // source, which stayed true when the guard was removed from the throw and the
+  // function left behind - so the mutation passed. A test has to name the thing
+  // that actually has to hold.
+  eq('gated() guards the early throw with it',
+    /if \(claim\.status === 'fail' && !contradictsOwnFailure\(claim\)\)/.test(SRC), true)
+  eq('the deferral is one correction, not a free pass',
+    /if \(final\.status === 'fail'\)/.test(SRC), true)
+}
+
+// The builder had no way to check a backgrounded process, so its only route to
+// "is the suite done" was a shell poll - which Bash kills at its two-minute
+// default timeout, having learned nothing. Seven of those ran back to back in
+// one build phase.
+console.log('\nthe builder can check a background job')
+{
+  const md = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../agents/gated-builder.md'), 'utf8')
+  const tools = (md.match(/^tools:\s*(.+)$/m) || [])[1] || ''
+  eq('BashOutput is in the allowlist', /\bBashOutput\b/.test(tools), true)
+  eq('KillShell is in the allowlist', /\bKillShell\b/.test(tools), true)
+  eq('Bash is still there', /\bBash\b/.test(tools), true)
+  // The tools alone are not the fix: without the rule the model reaches for
+  // pgrep anyway, which is what it did.
+  eq('polling is forbidden in words too', /never_poll_for_a_process/.test(md), true)
+  eq('the full suite is not the builder\'s job', /do not run the full test suite/i.test(md), true)
 }
 
 // A run died with every check green: the plan asked the builder for the phase

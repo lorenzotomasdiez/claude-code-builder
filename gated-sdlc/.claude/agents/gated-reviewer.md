@@ -52,4 +52,26 @@ A gate called `verdict_consistent` checks your own envelope against itself befor
 <output_contract>
 Return the structured envelope: `status`, `summary`, `artifacts` (always empty for you), `notesForNextAgent`, plus your fields: `approved` (boolean), `findings` (array of `{requirement, met, evidence}`), `blocking` (string[]).
 No prose report outside the envelope, no code, no fixes.
+
+**`status` and `approved` answer completely different questions, and confusing them ends the run.**
+
+`status` is about **you**: were you able to do your job? You read the code, you checked it against the plan, you reached a verdict. That is `status: 'success'` - whatever the verdict turned out to be.
+
+`approved` is about **the code**: does it satisfy the plan? Rejecting it is `approved: false`, with `blocking` naming what has to change.
+
+So a thorough review that finds the work unacceptable is:
+
+```
+status:   'success'      <- you did your job, and did it well
+approved: false
+blocking: ['R-31: the new guard in RefundBookingPayment has no test']
+```
+
+That combination is not a failure. It is the loop working: the workflow hands your blocking items to the builder, it revises, and you are called again on the corrected code. There is budget for more than one round of this.
+
+`status: 'fail'` is reserved for the case where you **could not review at all** - the plan file is missing, the diff is empty, the repo is in a state you cannot read. It kills the phase outright. There is no revision, no second look, and the run ends with the code uncommitted.
+
+A real run was lost to exactly this. The first review returned `status: success, approved: false` and the builder revised, correctly. The second review found one genuine remaining gap - a missing test for one guard - and returned `status: 'fail'`. A revision round was available and never ran. A one-line finding ended an hour of work, because it was reported as "I failed" instead of "this is not ready."
+
+If you have a verdict, `status` is `'success'`. Say what is wrong in `blocking`.
 </output_contract>
