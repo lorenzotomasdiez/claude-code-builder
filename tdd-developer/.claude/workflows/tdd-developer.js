@@ -19,8 +19,12 @@ const FRAME_SCHEMA = {
     featureName: { type: 'string' },
     sourceOfTruth: { type: 'string', description: 'The test plan or requirement file used, or "derived from the tag - no written spec"' },
     testCommand: { type: 'string', description: 'The exact command that runs the suite, verified by running it' },
-    singleFileTestCommand: { type: 'string', description: 'Command template for running one file, with {file} as the placeholder. Empty if the framework cannot target a file.' },
-    exampleTestFile: { type: 'string', description: 'A real existing test file the writers should copy conventions from' },
+    singleFileTestCommand: {
+      type: 'string',
+      description: 'Command template for running one file, with {file} as the placeholder. MUST use the framework\'s verbose/per-test reporter so individual test names appear in the output - otherwise the verifier has to read the test files back to attribute results. Empty if the framework cannot target a file.',
+    },
+    unitExampleFile: { type: 'string', description: 'A real existing unit/integration test file the writers should copy conventions from. Empty if the repo has none.' },
+    e2eExampleFile: { type: 'string', description: 'A real existing browser/e2e spec file, if this repo has a separate e2e layer. Empty if it does not.' },
     suiteGreenBefore: { type: 'boolean', description: 'Whether the suite passed BEFORE this run started. False means red-green signal is already polluted.' },
     hasUi: { type: 'boolean' },
     appUrl: { type: 'string', description: 'Where the app serves, if it does' },
@@ -96,16 +100,30 @@ const IMPL_SCHEMA = {
     filesModified: { type: 'array', items: { type: 'string' } },
     believedPassing: { type: 'array', items: { type: 'string' }, description: 'Self-reported and NOT trusted - the verifier decides' },
     testFilesTouched: { type: 'array', items: { type: 'string' }, description: 'Must be empty. Anything here is a contract violation worth surfacing.' },
+    diagnosed: {
+      type: 'array',
+      description: 'Per-scenario diagnosis for any test you knowingly left failing. Not trusted - it is passed to an independent adjudicator as a hypothesis to audit, which is cheaper than making it re-derive the analysis from scratch.',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          diagnosis: { type: 'string', description: 'Why it still fails and which side you believe is wrong, with file and line' },
+        },
+        required: ['id', 'diagnosis'],
+      },
+    },
     notes: { type: 'string', description: 'Anything suspicious about a test, flagged rather than acted on' },
     blocker: { type: 'string' },
   },
   required: ['filesCreated', 'filesModified'],
 }
 
+// No `id` here, and deliberately so: the workflow already knows which scenario it asked about and
+// re-attaches the ID to the returned verdict. Requiring the agent to echo it back bought nothing and
+// cost a full regeneration every time it forgot.
 const VERDICT_SCHEMA = {
   type: 'object',
   properties: {
-    id: { type: 'string' },
     verdict: {
       type: 'string',
       enum: ['test_wrong', 'implementation_wrong', 'both_wrong', 'environment'],
@@ -115,7 +133,17 @@ const VERDICT_SCHEMA = {
     evidence: { type: 'string' },
     whatShouldChange: { type: 'string', description: 'Specific enough to act on without redoing the analysis' },
   },
-  required: ['id', 'verdict', 'fault', 'whatShouldChange'],
+  required: ['verdict', 'fault', 'whatShouldChange'],
+}
+
+const PREFLIGHT_SCHEMA = {
+  type: 'object',
+  properties: {
+    browserToolAvailable: { type: 'boolean', description: 'playwright-cli resolves on PATH' },
+    appReachable: { type: 'boolean', description: 'The app answered at the URL, or a start command exists that could bring it up' },
+    detail: { type: 'string', description: 'The exact command output that settled it' },
+  },
+  required: ['browserToolAvailable', 'appReachable'],
 }
 
 const JOURNEY_SCHEMA = {
@@ -198,7 +226,12 @@ const frame = await agent(
   `The tag may be a requirement ID with a plan already written, a path, or free text describing something nobody wrote down. ` +
   `All three are valid. When there is no spec, derive the behavior yourself and record every judgment call as an assumption.\n\n` +
   `Run the existing test suite once to establish whether it is green before this run starts, and give every test entry ` +
-  `concrete data and its own unique file path - two agents writing one file at the same time is a corruption bug.`,
+  `concrete data and its own unique file path - two agents writing one file at the same time is a corruption bug.\n\n` +
+  `<test_budget>\n${maxTests}\n</test_budget>\n` +
+  `This run can write at most ${maxTests} test(s). Emit at most that many, chosen as the ${maxTests} that best prove the ` +
+  `feature works - not the first ${maxTests} of a longer list you had in mind. Anything beyond the budget is discarded ` +
+  `unwritten, so a scenario you describe in full and do not fit under the cap is thinking nobody will ever use. ` +
+  `If the feature genuinely cannot be proven in ${maxTests} tests, say so in blockers and still emit your best ${maxTests}.`,
   { agentType: 'tdd-dev-framer', schema: FRAME_SCHEMA, model: 'opus' }
 )
 if (!frame) throw new Error('Frame phase returned nothing - the tdd-dev-framer agent failed. Nothing downstream can run without the test list.')
@@ -240,14 +273,26 @@ if (collisions.length) {
   )
 }
 
-// Shared by every writer. Large shared payload first, small per-test token last, so the fan-out
-// shares one prompt-cache prefix instead of missing on every call (see ../PROMPT_CACHE_ORDERING.md).
+// Shared by every writer, and kept deliberately SMALL. Ordering it first still shares a prompt-cache
+// prefix (see ../PROMPT_CACHE_ORDERING.md), but a fan-out launched in one instant races the cache:
+// every writer misses and every writer pays to WRITE the prefix, so a shared block is billed per agent,
+// not once. Anything a test writer does not strictly need therefore gets billed N times for nothing -
+// which is why the implementation brief is no longer here. Writers are forbidden from writing
+// production code, so the plan for that code is pure ballast in their context.
 const writerContext =
   `<repo_conventions>\n` +
   `Test command: ${frame.testCommand}\n` +
-  `Copy the conventions in this existing test file: ${frame.exampleTestFile || 'none found - follow the language default'}\n` +
-  `</repo_conventions>\n\n` +
-  `<implementation_brief>\n${frame.implementationBrief || 'Not supplied.'}\n</implementation_brief>\n\n`
+  `</repo_conventions>\n\n`
+
+// One exemplar per writer, chosen by what it is actually writing. Pointing every writer at both a unit
+// exemplar and an e2e exemplar means each one reads a file in a framework it is not using.
+const e2eExample = frame.e2eExampleFile || ''
+const unitExample = frame.unitExampleFile || ''
+const exemplarFor = (filePath) => {
+  const isE2e = /(^|\/)(e2e|tests?\/e2e)\//.test(filePath) || /\.spec\.[jt]sx?$/.test(filePath)
+  const picked = (isE2e && e2eExample) || (!isE2e && unitExample) || unitExample || e2eExample
+  return picked || 'none found - follow the language default'
+}
 
 // --- Phase 2: Red (one haiku agent per test, all at once) ---
 phase('Red')
@@ -257,8 +302,12 @@ const written = (await parallel(tests.map(t => () =>
     writerContext +
     `<test>\nid: ${t.id}\nname: ${t.name}\nbehavior: ${t.behavior}\ntargets: ${t.targets}\n</test>\n\n` +
     `<output_path>\n${t.filePath}\n</output_path>\n\n` +
+    `<convention_exemplar>\n${exemplarFor(t.filePath)}\n</convention_exemplar>\n\n` +
     `Write exactly this one failing test file. The code it calls does not exist yet - a failing import is the ` +
-    `correct outcome, not a problem to work around. Do not create production code, do not skip, do not weaken the assertion.`,
+    `correct outcome, not a problem to work around. Do not create production code, do not skip, do not weaken the assertion.\n\n` +
+    `The block above is your whole assignment. Read the one convention exemplar and, if you need it, the module under ` +
+    `test - nothing else. Do not open the test plan, the design docs, or the requirement file: whatever they say about ` +
+    `this scenario is already inlined above, and reading them again costs the run without changing the file you write.`,
     { agentType: 'tdd-dev-test-writer', label: `red:${t.id}`, phase: 'Red', schema: WRITE_SCHEMA, model: 'haiku' }
   )
 ))).filter(Boolean)
@@ -286,7 +335,10 @@ const redVerify = await agent(
   `<scenario_ids>\n${liveIds.join(', ')}\n</scenario_ids>\n\n` +
   `You are verifying RED: no implementation exists yet, so failures and errors are expected and healthy. ` +
   `What matters is that each test ran at all. Any test that PASSES here is suspicious - it was green before the ` +
-  `code existed, so it probably asserts nothing. Put those in suspectHollow. Report the real exit code.`,
+  `code existed, so it probably asserts nothing. Put those in suspectHollow. Report the real exit code.\n\n` +
+  `Attribute every result from the runner's own output. Do not read a test file to work out whether it passed, and ` +
+  `do not re-run anything to re-read an error you already have - if the reporter is too terse to attribute results, ` +
+  `re-run once with the framework's verbose reporter instead. The command you report must be one you actually ran.`,
   { agentType: 'tdd-dev-verifier', schema: VERIFY_SCHEMA, model: 'haiku' }
 )
 if (!redVerify) {
@@ -343,7 +395,10 @@ while (true) {
     `<files>\n${targetFiles.join('\n')}\n</files>\n` +
     `<scenario_ids>\n${liveIds.join(', ')}\n</scenario_ids>\n\n` +
     `You are verifying GREEN (attempt ${attempt} of ${MAX_ATTEMPTS}): the implementation exists now, so passes are the goal. ` +
-    `Report the real exit code and quote the real error text for every failure.`,
+    `Report the real exit code and quote the real error text for every failure.\n\n` +
+    `Attribute every result from the runner's own output. Do not read a test file to work out whether it passed, and ` +
+    `do not re-run anything to re-read an error you already have - if the reporter is too terse to attribute results, ` +
+    `re-run once with the framework's verbose reporter instead. The command you report must be one you actually ran.`,
     { agentType: 'tdd-dev-verifier', label: `verify:attempt-${attempt}`, phase: 'Adjudicate', schema: VERIFY_SCHEMA, model: 'haiku' }
   )
   if (!verify) {
@@ -367,6 +422,8 @@ while (true) {
   // the implementation, which is the entire reason its verdict can route a fix at all.
   const failureDetail = {}
   for (const f of (verify.failures || [])) failureDetail[f.id] = f.message
+  const implDiagnosis = {}
+  for (const d of (impl && impl.diagnosed ? impl.diagnosed : [])) implDiagnosis[d.id] = d.diagnosis
 
   verdicts = (await parallel(stillBad.map(id => {
     const t = tests.find(x => x.id === id) || {}
@@ -374,15 +431,23 @@ while (true) {
     return () => agent(
       `<requirement>\n${t.behavior || 'Not available'}\n</requirement>\n\n` +
       `<test_file>\n${w.path || 'unknown'}\n</test_file>\n\n` +
-      `<implementation_files>\n${[...(impl ? impl.filesCreated : []), ...(impl ? impl.filesModified : [])].join('\n') || 'unknown'}\n</implementation_files>\n\n` +
+      // A hint, not a manifest. The implementer's file list is what it happened to touch, which is
+      // routinely not where the fault lives - resolve the real files from the test's own imports.
+      `<implementation_files_touched_this_run>\n${[...(impl ? impl.filesCreated : []), ...(impl ? impl.filesModified : [])].join('\n') || 'unknown'}\n</implementation_files_touched_this_run>\n\n` +
       `<actual_error>\n${failureDetail[id] || 'No error text captured'}\n</actual_error>\n\n` +
+      (implDiagnosis[id]
+        ? `<implementer_hypothesis>\n${implDiagnosis[id]}\n</implementer_hypothesis>\n` +
+          `This is the implementer's own account of why it left this failing. It is a starting point to audit, not a ` +
+          `finding to adopt - it comes from one of the two parties you are judging, and it will read as reasonable ` +
+          `whether or not it is true. Confirm or refute it against the requirement, the test, and the code yourself.\n\n`
+        : '') +
       `<scenario_id>\n${id}\n</scenario_id>\n\n` +
       `This test still fails after an honest implementation attempt. Read the requirement FIRST, then the test, ` +
       `then the code, then the error. Decide whether the test or the implementation is wrong. ` +
       `When the evidence is genuinely balanced, choose implementation_wrong - a wrongly blamed test gets the ` +
       `specification edited to match whatever the code already does.`,
       { agentType: 'tdd-dev-adjudicator', label: `adjudicate:${id}`, phase: 'Adjudicate', schema: VERDICT_SCHEMA, model: 'sonnet' }
-    )
+    ).then(v => (v ? { ...v, id } : null))
   }))).filter(Boolean)
 
   for (const v of verdicts) log(`  ${v.id}: ${v.verdict} - ${v.fault}`)
@@ -405,6 +470,7 @@ while (true) {
       return () => agent(
         writerContext +
         `<rewrite>\nfile: ${w.path}\nscenario: ${v.id}\n</rewrite>\n\n` +
+        `<convention_exemplar>\n${exemplarFor(w.path || '')}\n</convention_exemplar>\n\n` +
         `<adjudicator_verdict>\n${v.fault}\n\nWhat should change: ${v.whatShouldChange}\n</adjudicator_verdict>\n\n` +
         `An independent adjudicator ruled this test wrong. Fix only what the verdict names. Keep the scenario ID ` +
         `and the file path. Do not weaken the assertion to make it pass - if the right assertion still fails, that is fine.`,
@@ -439,6 +505,28 @@ if (skipBrowser) {
   log('Browser phase skipped - the framer found no runnable UI or no serving URL for this project')
 } else if (!finalPassed.length) {
   log('Browser phase skipped - nothing passed at the unit level, so a browser run would only screenshot a broken page')
+} else if (!(await (async () => {
+  // Cheap preflight BEFORE the two expensive spawns. Without it, an opus author writes a full journey
+  // and a runner is handed it in a ~10k-token prompt, only for `which playwright-cli` to exit 1 and the
+  // whole phase to return `blocked`. The tooling check costs a few hundred tokens; finding out the
+  // expensive way costs both agents and still learns nothing about the feature.
+  const pre = await agent(
+    `<app_url>\n${frame.appUrl}\n</app_url>\n\n` +
+    `<app_start_command>\n${frame.appStartCommand || 'not supplied'}\n</app_start_command>\n\n` +
+    `Answer two questions and nothing else. First, does \`playwright-cli\` resolve on PATH? Second, is the app ` +
+    `reachable at that URL right now, or is there a start command that could bring it up? Use one or two shell ` +
+    `commands. Install nothing, start nothing, and read no files.`,
+    { agentType: 'tdd-dev-browser-runner', label: 'preflight', phase: 'Browser', schema: PREFLIGHT_SCHEMA, model: 'haiku' }
+  )
+  if (!pre) {
+    log('Browser preflight failed to return - treating the browser phase as unavailable rather than guessing')
+    return false
+  }
+  if (!pre.browserToolAvailable) log(`Browser phase skipped - playwright-cli is not on PATH. ${pre.detail || ''}`)
+  else if (!pre.appReachable) log(`Browser phase skipped - the app is not reachable at ${frame.appUrl} and no start command was supplied. ${pre.detail || ''}`)
+  return pre.browserToolAvailable && pre.appReachable
+})())) {
+  // already logged by the preflight above
 } else {
   journey = await agent(
     `<feature>\n${frame.featureName}\n</feature>\n\n` +
@@ -455,7 +543,15 @@ if (skipBrowser) {
     log('E2E author failed - no journey to run')
   } else {
     browser = await agent(
-      `<journey>\n${JSON.stringify(journey, null, 2)}\n</journey>\n\n` +
+      // Steps only. `expectedRisk` is the author's prediction of where this may fail, and it belongs to
+      // whoever reads the result - handing it to the executor tells it where to expect trouble before it
+      // has looked at the page, which is the one thing an honest observer must not be primed with.
+      `<journey>\n${JSON.stringify({
+        name: journey.name,
+        startUrl: journey.startUrl,
+        preconditions: journey.preconditions || [],
+        steps: journey.steps,
+      }, null, 2)}\n</journey>\n\n` +
       `<screenshot_dir>\n${proofDir}\n</screenshot_dir>\n\n` +
       `<app_start_command>\n${frame.appStartCommand || 'not supplied - assume the app is already serving'}\n</app_start_command>\n\n` +
       `Drive this journey in a real browser with playwright-cli. Screenshot every step into the proof folder, ` +

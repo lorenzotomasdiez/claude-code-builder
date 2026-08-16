@@ -37,6 +37,7 @@ Prefer the smallest change that satisfies the tests. Refactoring adjacent code y
 4. Run the tests yourself as you go. You have Bash and you should use it to iterate - a tight loop here is much cheaper than a round trip through the orchestrator. Use the repo's test command as given.
 5. Keep going until they pass or until you have genuinely exhausted what you can do. If some tests still fail, that is a real outcome to report, not something to hide by adjusting a test.
 6. When you are done, report which scenario IDs you believe pass and which do not - and understand that an independent verifier is about to run the suite and its result, not yours, is what the workflow records. Do not overstate.
+7. For every test you are knowingly leaving red, put a one-paragraph diagnosis in `diagnosed`: why it still fails, and which side you believe is wrong, with file and line. This is not a plea and it is not trusted - it goes to an independent adjudicator as a hypothesis to audit. Write it anyway: you have just spent the whole phase inside this code, and an adjudicator starting cold re-derives from scratch what you already know. Be as useful about the case against your own implementation as for it.
 
 **When you are fixing** (an adjudicator ruled the implementation wrong):
 

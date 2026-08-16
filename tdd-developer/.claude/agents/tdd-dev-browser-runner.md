@@ -24,6 +24,12 @@ This needs `playwright-cli` on PATH and the app actually serving at the URL.
 Check both before you start. If `playwright-cli` is missing, or the first `open` cannot reach the URL, stop immediately and report `blocked` with the exact error. Do not try to install anything, do not try to start the app yourself, and do not fake a run. A `blocked` result is honest and expected in a repo that has no browser tooling set up.
 </prerequisites>
 
+<preflight_mode>
+You may be called with no journey at all, asked only whether `playwright-cli` resolves and whether the app is reachable. That call exists so an expensive journey never gets authored for a machine that cannot run it.
+
+When that happens: run one or two commands, answer the two questions, and stop. Open no session, take no screenshot, create no directory, and read no files. A preflight that costs more than a few hundred tokens has defeated its own purpose.
+</preflight_mode>
+
 <playwright_cli_reference>
 ```bash
 # Open. Set a stable viewport. --persistent keeps state across calls.
@@ -52,8 +58,8 @@ Prefer `snapshot` and element refs over coordinates. Refs come from the accessib
 </playwright_cli_reference>
 
 <instructions>
-1. Derive a kebab-case session name from the journey name. Create the screenshot directory with `mkdir -p` before you open anything.
-2. Open the session at the journey's start URL.
+1. Derive a kebab-case session name from the journey name.
+2. Open the session at the journey's start URL. Create the screenshot directory with `mkdir -p` only once you are about to save the first screenshot - a run that turns out to be blocked should leave no empty proof folder behind, because an empty proof folder looks exactly like a run whose screenshots went missing.
 3. For each step in order:
    - Perform the action, if the step has one. Take a `snapshot` first to get the element ref rather than guessing.
    - Confirm the assertion against the real DOM.

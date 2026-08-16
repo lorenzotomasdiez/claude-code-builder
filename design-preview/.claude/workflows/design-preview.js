@@ -17,7 +17,7 @@ const STITCH_FONTS = [
   'INTER', 'MANROPE', 'PLUS_JAKARTA_SANS', 'SPACE_GROTESK', 'WORK_SANS', 'DM_SANS',
   'GEIST', 'SORA', 'OUTFIT', 'LEXEND', 'IBM_PLEX_SANS', 'RUBIK', 'MONTSERRAT',
   'NEWSREADER', 'EB_GARAMOND', 'PLAYFAIR_DISPLAY', 'LIBRE_CASLON_TEXT',
-  'JETBRAINS_MONO', 'BEBAS_NEUE',
+  'JETBRAINS_MONO', 'BEBAS_NEUE', 'GOOGLE_SANS', 'ATKINSON_HYPERLEGIBLE_NEXT', 'MERRIWEATHER',
 ]
 
 const SCOPE_SCHEMA = {
@@ -68,22 +68,32 @@ const DIRECTION_SCHEMA = {
       description: 'Pick DARK only when the product is used in a dim context or the category expects it (developer tooling, media, trading, monitoring). Pick LIGHT for everything else, including most consumer and B2B products. Do not pick DARK because it looks striking in a preview.',
     },
     customColor: { type: 'string', description: 'Seed color in hex, e.g. "#0F4C5C". If the PRD states a brand color, use it verbatim.' },
+    colorVariant: {
+      type: 'string',
+      enum: ['NEUTRAL', 'TONAL_SPOT', 'VIBRANT', 'EXPRESSIVE', 'FIDELITY', 'CONTENT', 'MONOCHROME'],
+      description: 'How Stitch expands the seed color into a full palette. Full guidance per value is in the design-director agent instructions - choose deliberately rather than leaving Stitch to pick.',
+    },
     headlineFont: {
       type: 'string',
       enum: STITCH_FONTS,
-      description: 'The display face. Geometric and neo-grotesque sans (INTER, GEIST, DM_SANS, MANROPE, PLUS_JAKARTA_SANS, WORK_SANS) read neutral and modern and are the safe answer for most software. Serifs (NEWSREADER, EB_GARAMOND, PLAYFAIR_DISPLAY, LIBRE_CASLON_TEXT) buy editorial or institutional authority and cost approachability. SPACE_GROTESK, SORA, and OUTFIT read technical or opinionated. JETBRAINS_MONO only for developer tooling. BEBAS_NEUE only when the brand is genuinely loud.',
+      description: 'The display face. See the design-director agent instructions for the family-by-family guidance.',
     },
     bodyFont: {
       type: 'string',
       enum: STITCH_FONTS,
-      description: 'The reading face, judged on legibility at small sizes rather than character. Matching it to headlineFont is the correct default for most products; pair a different family only when the contrast does deliberate work. Never choose BEBAS_NEUE or PLAYFAIR_DISPLAY here - display faces are unreadable as body text.',
+      description: 'The reading face, judged on legibility at small sizes. See the design-director agent instructions for pairing guidance.',
+    },
+    labelFont: {
+      type: 'string',
+      enum: STITCH_FONTS,
+      description: 'Optional face for small UI chrome text (buttons, tabs, badges, nav labels). Omit this field entirely to inherit bodyFont - do not return an empty string, since it must be a valid enum value if present.',
     },
     roundness: {
       type: 'string',
       enum: ['ROUND_FOUR', 'ROUND_EIGHT', 'ROUND_TWELVE', 'ROUND_FULL'],
       description: 'ROUND_FOUR for dense, precise, data-heavy or institutional products; ROUND_EIGHT as the neutral default for most software; ROUND_TWELVE for friendly consumer products; ROUND_FULL only for playful or highly casual brands. This is a category decision, not a taste tiebreaker.',
     },
-    designMd: { type: 'string', description: 'The full DESIGN.md document as markdown. This is the file a human reads to judge the direction, and it is also passed to Stitch as the design system brief.' },
+    designMd: { type: 'string', description: 'The full DESIGN.md document as markdown. This is the file a human reads to judge the direction, and it is also passed to Stitch as the design system brief, so its prose is a second, freeform input to the same generation - not just documentation of the structured fields above.' },
     rationale: { type: 'string', description: 'Why this direction fits this product, in a few sentences' },
   },
   required: ['displayName', 'colorMode', 'customColor', 'headlineFont', 'bodyFont', 'roundness', 'designMd', 'rationale'],
@@ -168,10 +178,22 @@ const scope = await agent(
   (requestedScreen
     ? `The human has asked specifically for this screen: "${requestedScreen}". Scope that screen rather than picking one yourself, and say in the rationale how it relates to the product.`
     : `Pick the single most representative screen: the one a stakeholder would look at to decide whether they like this product's design.`) +
-  `\n\nIf <prd_source> looks like a file path, read that file first. If it is prose, treat it as the PRD itself.`,
+  `\n\nIf <prd_source> looks like a file path, read that file first. If it is prose, treat it as the PRD itself.` +
+  (reusing
+    ? `\n\nThis screen renders into an existing Stitch project, whose platform is locked to ${manifest.deviceType || 'DESKTOP'} and cannot change mid-project. Scope deviceType as ${manifest.deviceType || 'DESKTOP'} regardless of what the PRD implies, and note in assumptions if the PRD reads like a different platform - that is a real signal the human should see, not something to silently correct.`
+    : ''),
   { agentType: 'preview-scoper', schema: SCOPE_SCHEMA, model: 'sonnet' }
 )
 if (!scope) throw new Error('Read phase returned nothing - the scoper agent failed. Nothing downstream can run without a scoped screen.')
+
+// Stitch locks a project's platform at first generation and will not honor a switch
+// mid-thread. On a reuse run the platform was already decided by an earlier run, so it
+// overrides whatever this run's scoper concluded from the PRD - the scoper was told this,
+// but the override is enforced here rather than trusted to always land.
+if (reusing && manifest.deviceType && scope.deviceType !== manifest.deviceType) {
+  log(`Overriding deviceType: scoper said ${scope.deviceType}, but this project is locked to ${manifest.deviceType} from its first run. Using ${manifest.deviceType}.`)
+  scope.deviceType = manifest.deviceType
+}
 
 const slug = opts.slug || scope.slug
 const outDir = opts.outDir || `docs/design-preview/${slug}`
@@ -203,8 +225,10 @@ if (reusing) {
       theme: {
         colorMode: direction.colorMode,
         customColor: direction.customColor,
+        ...(direction.colorVariant ? { colorVariant: direction.colorVariant } : {}),
         headlineFont: direction.headlineFont,
         bodyFont: direction.bodyFont,
+        ...(direction.labelFont ? { labelFont: direction.labelFont } : {}),
         roundness: direction.roundness,
         designMd: direction.designMd,
       },

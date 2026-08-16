@@ -256,8 +256,10 @@ const anchor = await agent(
   `projectId: ${manifest.projectId}\n` +
   `designSystem: ${manifest.designSystemAsset}\n` +
   `deviceType: ${deviceType}\n` +
+  `modelId: GEMINI_3_1_PRO\n` +
   `Write the resulting markup to this exact path: ${outDir}/screens/${anchorScreen.key}.html\n\n` +
-  `You are the ANCHOR screen: you render first and alone, and every other screen in this product will be built to match yours. ` +
+  `You are the ANCHOR screen: you render first and alone, and every other screen in this product will be built to match yours. Every other screen ` +
+  `copies your chrome, so pass the modelId above rather than leaving it unset - layout precision matters more here than generation speed. ` +
   `Build the shell exactly as the product_shell block specifies. Then, after the markup comes back, read it and fill in shellDescription ` +
   `with the persistent chrome as it was ACTUALLY built - what is in the top bar and in what order, the navigation, the layout structure, the density. ` +
   `Describe what the markup contains, not what you asked for.`,
@@ -322,10 +324,12 @@ if (unifyRun && renderedIds.length > 1) {
     sharedContext +
     `projectId: ${manifest.projectId}\n` +
     `screenIds: ${JSON.stringify(renderedIds)}\n` +
-    `deviceType: ${deviceType}\n\n` +
+    `deviceType: ${deviceType}\n` +
+    `modelId: GEMINI_3_1_PRO\n\n` +
     `<local_files>\n${JSON.stringify(renders.filter(r => r.status === 'rendered').map(r => ({ key: r.key, screenId: r.screenId, name: r.screenName, html: r.htmlPath })), null, 2)}\n</local_files>\n\n` +
     `These screens were generated independently against one design system, so they share color, type, and shape but may have drifted apart on chrome, navigation, and layout. ` +
-    `Run one edit pass over all of them together to converge them into a single application, then refresh the local files.`,
+    `Run one edit pass over all of them together to converge them into a single application, then refresh the local files. Pass the modelId above to edit_screens - ` +
+    `this one call decides whether the whole set reads as one product, which is worth the higher-fidelity model.`,
     { agentType: 'suite-unifier', schema: UNIFY_SCHEMA, model: 'sonnet' }
   )
   if (!unify) log('Unify phase failed outright - the screens are still on disk, just less consistent with each other')
